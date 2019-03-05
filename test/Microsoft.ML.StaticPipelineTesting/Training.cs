@@ -618,7 +618,7 @@ namespace Microsoft.ML.StaticPipelineTesting
 
             var est = reader.MakeNewEstimator()
                 .Append(r => (r.label, score: catalog.Trainers.PoissonRegression(r.label, r.features, null,
-                                new PoissonRegression.Options { L2Weight = 2, EnforceNonNegativity = true, NumThreads = 1 },
+                                new PoissonRegression.Options { L2Regularization = 2, EnforceNonNegativity = true, NumberOfThreads = 1 },
                                 onFit: (p) => { pred = p; })));
 
             var pipe = reader.Append(est);
@@ -627,9 +627,7 @@ namespace Microsoft.ML.StaticPipelineTesting
             var model = pipe.Fit(dataSource);
             Assert.NotNull(pred);
             // 11 input features, so we ought to have 11 weights.
-            VBuffer<float> weights = new VBuffer<float>();
-            pred.GetFeatureWeights(ref weights);
-            Assert.Equal(11, weights.Length);
+            Assert.Equal(11, pred.Weights.Count);
 
             var data = model.Load(dataSource);
 
@@ -657,7 +655,7 @@ namespace Microsoft.ML.StaticPipelineTesting
 
             var est = reader.MakeNewEstimator()
                 .Append(r => (r.label, preds: catalog.Trainers.LogisticRegressionBinaryClassifier(r.label, r.features, null,
-                                    new LogisticRegression.Options { L1Weight = 10, NumThreads = 1 }, onFit: (p) => { pred = p; })));
+                                    new LogisticRegression.Options { L1Regularization = 10, NumberOfThreads = 1 }, onFit: (p) => { pred = p; })));
 
             var pipe = reader.Append(est);
 
@@ -697,7 +695,7 @@ namespace Microsoft.ML.StaticPipelineTesting
                     r.label,
                     r.features,
                     null,
-                    new MulticlassLogisticRegression.Options { NumThreads = 1 },
+                    new MulticlassLogisticRegression.Options { NumberOfThreads = 1 },
                     onFit: p => pred = p)));
 
             var pipe = reader.Append(est);
@@ -751,9 +749,7 @@ namespace Microsoft.ML.StaticPipelineTesting
             var model = pipe.Fit(dataSource);
             Assert.NotNull(pred);
             // 11 input features, so we ought to have 11 weights.
-            VBuffer<float> weights = new VBuffer<float>();
-            pred.GetFeatureWeights(ref weights);
-            Assert.Equal(11, weights.Length);
+            Assert.Equal(11, pred.Weights.Count);
 
             var data = model.Load(dataSource);
 
@@ -790,8 +786,8 @@ namespace Microsoft.ML.StaticPipelineTesting
                                     null,
                                     options: new KMeansPlusPlusTrainer.Options
                                     {
-                                        ClustersCount = 3,
-                                        NumThreads = 1
+                                        NumberOfClusters = 3,
+                                        NumberOfThreads = 1
                                     },
                                     onFit: p => pred = p
                                 )));
@@ -927,7 +923,7 @@ namespace Microsoft.ML.StaticPipelineTesting
             var reader = TextLoaderStatic.CreateLoader(env,
                 c => (label: c.LoadText(0), features: c.LoadFloat(1, 4)));
 
-            OvaModelParameters pred = null;
+            OneVersusAllModelParameters pred = null;
 
             // With a custom loss function we no longer get calibrated predictions.
             var est = reader.MakeNewEstimator()
@@ -979,13 +975,12 @@ namespace Microsoft.ML.StaticPipelineTesting
             Assert.Null(pred);
             var model = pipe.Fit(dataSource);
             Assert.NotNull(pred);
-            int[] labelHistogram = default;
-            int[][] featureHistogram = default;
-            pred.GetLabelHistogram(ref labelHistogram, out int labelCount1);
-            pred.GetFeatureHistogram(ref featureHistogram, out int labelCount2, out int featureCount);
-            Assert.True(labelCount1 == 3 && labelCount1 == labelCount2 && labelCount1 <= labelHistogram.Length);
+            var labelHistogram = pred.GetLabelHistogram();
+            var labelCount1 = labelHistogram.Count;
+            var featureHistogram = pred.GetFeatureHistogram();
+            Assert.True(labelCount1 == 3 && labelCount1 == featureHistogram.Count);
             for (int i = 0; i < labelCount1; i++)
-                Assert.True(featureCount == 4 && (featureCount <= featureHistogram[i].Length));
+                Assert.True(featureHistogram[i].Count == 4);
 
             var data = model.Load(dataSource);
 
