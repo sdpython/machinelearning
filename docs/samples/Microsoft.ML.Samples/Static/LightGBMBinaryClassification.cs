@@ -1,5 +1,4 @@
 using System;
-using Microsoft.ML.Data;
 using Microsoft.ML.LightGBM.StaticPipe;
 using Microsoft.ML.StaticPipe;
 
@@ -78,8 +77,8 @@ namespace Microsoft.ML.Samples.Static
                         Score: mlContext.BinaryClassification.Trainers.LightGbm(
                             row.Label,
                             row.Features,
-                            numLeaves: 4,
-                            minDataPerLeaf: 6,
+                            numberOfLeaves: 4,
+                            minimumExampleCountPerLeaf: 6,
                             learningRate: 0.001)))
                 .Append(row => (
                     Label: row.Label,
