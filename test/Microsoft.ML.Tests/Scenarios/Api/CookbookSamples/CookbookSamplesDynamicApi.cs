@@ -159,7 +159,7 @@ namespace Microsoft.ML.Tests.Scenarios.Api.CookbookSamples
                 // Cache data in memory for steps after the cache check point stage.
                 .AppendCacheCheckpoint(mlContext)
                 // Use the multi-class SDCA model to predict the label using features.
-                .Append(mlContext.MulticlassClassification.Trainers.SdcaCalibrated());
+                .Append(mlContext.MulticlassClassification.Trainers.SdcaMaximumEntropy());
 
             // Train the model.
             var trainedModel = pipeline.Fit(trainData);
@@ -187,7 +187,7 @@ namespace Microsoft.ML.Tests.Scenarios.Api.CookbookSamples
             // 		[2]	-9.709775	float
 
             // Apply the inverse conversion from 'PredictedLabel' column back to string value.
-            var finalPipeline = pipeline.Append(mlContext.Transforms.Conversion.MapKeyToValue(("Data", "PredictedLabel")));
+            var finalPipeline = pipeline.Append(mlContext.Transforms.Conversion.MapKeyToValue("Data", "PredictedLabel"));
             dataPreview = finalPipeline.Preview(trainData);
 
             return finalPipeline.Fit(trainData);
@@ -417,7 +417,7 @@ namespace Microsoft.ML.Tests.Scenarios.Api.CookbookSamples
                 // Notice that unused part in the data may not be cached.
                 .AppendCacheCheckpoint(mlContext)
                 // Use the multi-class SDCA model to predict the label using features.
-                .Append(mlContext.MulticlassClassification.Trainers.SdcaCalibrated());
+                .Append(mlContext.MulticlassClassification.Trainers.SdcaMaximumEntropy());
 
             // Split the data 90:10 into train and test sets, train and evaluate.
             var split = mlContext.Data.TrainTestSplit(data, testFraction: 0.1);
