@@ -133,19 +133,19 @@ namespace Microsoft.ML.Recommender.Internal
             /// Specify if the factor matrices should be non-negative.
             /// </summary>
             [FieldOffset(48)]
-            public int DoNmf;
+            public byte DoNmf;
 
             /// <summary>
             /// Set to true so that LIBMF may produce less information to STDOUT.
             /// </summary>
-            [FieldOffset(52)]
-            public int Quiet;
+            [FieldOffset(49)]
+            public byte Quiet;
 
             /// <summary>
             /// Set to false so that LIBMF may reuse and modifiy the data passed in.
             /// </summary>
-            [FieldOffset(56)]
-            public int CopyData;
+            [FieldOffset(50)]
+            public byte CopyData;
         }
 
         [StructLayout(LayoutKind.Explicit)]
@@ -223,9 +223,9 @@ namespace Microsoft.ML.Recommender.Internal
             _mfParam.Eta = (float)eta;
             _mfParam.Alpha = (float)alpha;
             _mfParam.C = (float)c;
-            _mfParam.DoNmf = doNmf ? 1 : 0;
-            _mfParam.Quiet = quiet ? 1 : 0;
-            _mfParam.CopyData = copyData ? 1 : 0;
+            _mfParam.DoNmf = doNmf ? (byte)1 : (byte)0;
+            _mfParam.Quiet = quiet ? (byte)1 : (byte)0;
+            _mfParam.CopyData = copyData ? (byte)1 : (byte)0;
         }
 
         ~SafeTrainingAndModelBuffer()
@@ -275,6 +275,9 @@ namespace Microsoft.ML.Recommender.Internal
                     }
                     rowGetter(ref row);
                     // REVIEW: Instead of ignoring, should I throw in the row > rowCount case?
+                    // The index system in the LIBMF (the underlying library trains the model) is 0-based, so we need
+                    // to deduct one from 1-based indexes returned by ML.NET's key-valued getters. We also skip 0 returned
+                    // by key-valued getter becuase missing value is not meaningful to the trained model.
                     if (row == 0 || row > (uint)rowCount)
                     {
                         numSkipped++;
