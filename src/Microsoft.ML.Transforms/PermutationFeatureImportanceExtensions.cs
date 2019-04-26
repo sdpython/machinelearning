@@ -10,11 +10,16 @@ using Microsoft.ML.Transforms;
 
 namespace Microsoft.ML
 {
+    /// <summary>
+    /// Collection of extension methods used by <see cref="RegressionCatalog"/>,
+    ///  <see cref="BinaryClassificationCatalog"/>, <see cref="MulticlassClassificationCatalog"/>,
+    ///  and <see cref="RankingCatalog"/> to create instances of permutation feature importance components.
+    /// </summary>
     public static class PermutationFeatureImportanceExtensions
     {
         #region Regression
         /// <summary>
-        /// Permutation Feature Importance (PFI) for Regression
+        /// Permutation Feature Importance (PFI) for Regression.
         /// </summary>
         /// <remarks>
         /// <para>
@@ -27,28 +32,28 @@ namespace Microsoft.ML
         /// <para>
         /// PFI works by taking a labeled dataset, choosing a feature, and permuting the values
         /// for that feature across all the examples, so that each example now has a random value for the feature and
-        /// the original values for all other features. The evalution metric (e.g. R-squared) is then calculated
+        /// the original values for all other features. The evaluation metric (e.g. R-squared) is then calculated
         /// for this modified dataset, and the change in the evaluation metric from the original dataset is computed.
         /// The larger the change in the evaluation metric, the more important the feature is to the model.
         /// PFI works by performing this permutation analysis across all the features of a model, one after another.
         /// </para>
         /// <para>
         /// In this implementation, PFI computes the change in all possible regression evaluation metrics for each feature, and an
-        /// <code>ImmutableArray</code> of <code>RegressionMetrics</code> objects is returned. See the sample below for an
+        /// <see cref="ImmutableArray"/> of <see cref="RegressionMetrics"/> objects is returned. See the sample below for an
         /// example of working with these results to analyze the feature importance of a model.
         /// </para>
         /// </remarks>
         /// <example>
         /// <format type="text/markdown">
         /// <![CDATA[
-        /// [!code-csharp[PFI](~/../docs/samples/docs/samples/Microsoft.ML.Samples/Dynamic/PermutationFeatureImportance/PFIRegressionExample.cs)]
+        /// [!code-csharp[PermutationFeatureImportance](~/../docs/samples/docs/samples/Microsoft.ML.Samples/Dynamic/Trainers/Regression/PermutationFeatureImportance.cs)]
         /// ]]>
         /// </format>
         /// </example>
         /// <param name="catalog">The regression catalog.</param>
         /// <param name="predictionTransformer">The model on which to evaluate feature importance.</param>
         /// <param name="data">The evaluation data set.</param>
-        /// <param name="labelColumnName">Label column name.</param>
+        /// <param name="labelColumnName">Label column name. The column data must be <see cref="System.Single"/>.</param>
         /// <param name="useFeatureWeightFilter">Use features weight to pre-filter features.</param>
         /// <param name="numberOfExamplesToUse">Limit the number of examples to evaluate on. <cref langword="null"/> means up to ~2 bln examples from <paramref param="data"/> will be used.</param>
         /// <param name="permutationCount">The number of permutations to perform.</param>
@@ -90,7 +95,7 @@ namespace Microsoft.ML
 
         #region Binary Classification
         /// <summary>
-        /// Permutation Feature Importance (PFI) for Binary Classification
+        /// Permutation Feature Importance (PFI) for Binary Classification.
         /// </summary>
         /// <remarks>
         /// <para>
@@ -103,28 +108,28 @@ namespace Microsoft.ML
         /// <para>
         /// PFI works by taking a labeled dataset, choosing a feature, and permuting the values
         /// for that feature across all the examples, so that each example now has a random value for the feature and
-        /// the original values for all other features. The evalution metric (e.g. AUC) is then calculated
+        /// the original values for all other features. The evaluation metric (e.g. AUC) is then calculated
         /// for this modified dataset, and the change in the evaluation metric from the original dataset is computed.
         /// The larger the change in the evaluation metric, the more important the feature is to the model.
         /// PFI works by performing this permutation analysis across all the features of a model, one after another.
         /// </para>
         /// <para>
         /// In this implementation, PFI computes the change in all possible binary classification evaluation metrics for each feature, and an
-        /// <code>ImmutableArray</code> of <code>BinaryClassificationMetrics</code> objects is returned. See the sample below for an
+        /// <see cref="ImmutableArray"/> of <see cref="BinaryClassificationMetrics"/> objects is returned. See the sample below for an
         /// example of working with these results to analyze the feature importance of a model.
         /// </para>
         /// </remarks>
         /// <example>
         /// <format type="text/markdown">
         /// <![CDATA[
-        /// [!code-csharp[PFI](~/../docs/samples/docs/samples/Microsoft.ML.Samples/Dynamic/PermutationFeatureImportance/PfiBinaryClassificationExample.cs)]
+        /// [!code-csharp[PermutationFeatureImportance](~/../docs/samples/docs/samples/Microsoft.ML.Samples/Dynamic/Trainers/BinaryClassification/PermutationFeatureImportance.cs)]
         /// ]]>
         /// </format>
         /// </example>
         /// <param name="catalog">The binary classification catalog.</param>
         /// <param name="predictionTransformer">The model on which to evaluate feature importance.</param>
         /// <param name="data">The evaluation data set.</param>
-        /// <param name="labelColumnName">Label column name.</param>
+        /// <param name="labelColumnName">Label column name. The column data must be <see cref="System.Boolean"/>.</param>
         /// <param name="useFeatureWeightFilter">Use features weight to pre-filter features.</param>
         /// <param name="numberOfExamplesToUse">Limit the number of examples to evaluate on. <cref langword="null"/> means up to ~2 bln examples from <paramref param="data"/> will be used.</param>
         /// <param name="permutationCount">The number of permutations to perform.</param>
@@ -170,7 +175,7 @@ namespace Microsoft.ML
 
         #region Multiclass Classification
         /// <summary>
-        /// Permutation Feature Importance (PFI) for MulticlassClassification
+        /// Permutation Feature Importance (PFI) for MulticlassClassification.
         /// </summary>
         /// <remarks>
         /// <para>
@@ -183,21 +188,28 @@ namespace Microsoft.ML
         /// <para>
         /// PFI works by taking a labeled dataset, choosing a feature, and permuting the values
         /// for that feature across all the examples, so that each example now has a random value for the feature and
-        /// the original values for all other features. The evalution metric (e.g. micro-accuracy) is then calculated
+        /// the original values for all other features. The evaluation metric (e.g. micro-accuracy) is then calculated
         /// for this modified dataset, and the change in the evaluation metric from the original dataset is computed.
         /// The larger the change in the evaluation metric, the more important the feature is to the model.
         /// PFI works by performing this permutation analysis across all the features of a model, one after another.
         /// </para>
         /// <para>
         /// In this implementation, PFI computes the change in all possible multiclass classification evaluation metrics for each feature, and an
-        /// <code>ImmutableArray</code> of <code>MulticlassClassificationMetrics</code> objects is returned. See the sample below for an
+        /// <see cref="ImmutableArray"/> of <see cref="MulticlassClassificationMetrics"/> objects is returned. See the sample below for an
         /// example of working with these results to analyze the feature importance of a model.
         /// </para>
         /// </remarks>
+        /// <example>
+        /// <format type="text/markdown">
+        /// <![CDATA[
+        /// [!code-csharp[PermutationFeatureImportance](~/../docs/samples/docs/samples/Microsoft.ML.Samples/Dynamic/Trainers/MulticlassClassification/PermutationFeatureImportance.cs)]
+        /// ]]>
+        /// </format>
+        /// </example>
         /// <param name="catalog">The clustering catalog.</param>
         /// <param name="predictionTransformer">The model on which to evaluate feature importance.</param>
         /// <param name="data">The evaluation data set.</param>
-        /// <param name="labelColumnName">Label column name.</param>
+        /// <param name="labelColumnName">Label column name. The column data must be <see cref="KeyDataViewType"/>.</param>
         /// <param name="useFeatureWeightFilter">Use features weight to pre-filter features.</param>
         /// <param name="numberOfExamplesToUse">Limit the number of examples to evaluate on. <cref langword="null"/> means up to ~2 bln examples from <paramref param="data"/> will be used.</param>
         /// <param name="permutationCount">The number of permutations to perform.</param>
@@ -248,7 +260,7 @@ namespace Microsoft.ML
 
         #region Ranking
         /// <summary>
-        /// Permutation Feature Importance (PFI) for Ranking
+        /// Permutation Feature Importance (PFI) for Ranking.
         /// </summary>
         /// <remarks>
         /// <para>
@@ -261,21 +273,28 @@ namespace Microsoft.ML
         /// <para>
         /// PFI works by taking a labeled dataset, choosing a feature, and permuting the values
         /// for that feature across all the examples, so that each example now has a random value for the feature and
-        /// the original values for all other features. The evalution metric (e.g. NDCG) is then calculated
+        /// the original values for all other features. The evaluation metric (e.g. NDCG) is then calculated
         /// for this modified dataset, and the change in the evaluation metric from the original dataset is computed.
         /// The larger the change in the evaluation metric, the more important the feature is to the model.
         /// PFI works by performing this permutation analysis across all the features of a model, one after another.
         /// </para>
         /// <para>
         /// In this implementation, PFI computes the change in all possible ranking evaluation metrics for each feature, and an
-        /// <code>ImmutableArray</code> of <code>RankingMetrics</code> objects is returned. See the sample below for an
+        /// <see cref="ImmutableArray"/> of <see cref="RankingMetrics"/> objects is returned. See the sample below for an
         /// example of working with these results to analyze the feature importance of a model.
         /// </para>
         /// </remarks>
+        /// <example>
+        /// <format type="text/markdown">
+        /// <![CDATA[
+        /// [!code-csharp[PermutationFeatureImportance](~/../docs/samples/docs/samples/Microsoft.ML.Samples/Dynamic/Trainers/Ranking/PermutationFeatureImportance.cs)]
+        /// ]]>
+        /// </format>
+        /// </example>
         /// <param name="catalog">The clustering catalog.</param>
         /// <param name="predictionTransformer">The model on which to evaluate feature importance.</param>
         /// <param name="data">The evaluation data set.</param>
-        /// <param name="labelColumnName">Label column name.</param>
+        /// <param name="labelColumnName">Label column name. The column data must be <see cref="System.Single"/> or <see cref="KeyDataViewType"/>.</param>
         /// <param name="rowGroupColumnName">GroupId column name</param>
         /// <param name="useFeatureWeightFilter">Use features weight to pre-filter features.</param>
         /// <param name="numberOfExamplesToUse">Limit the number of examples to evaluate on. <cref langword="null"/> means up to ~2 bln examples from <paramref param="data"/> will be used.</param>

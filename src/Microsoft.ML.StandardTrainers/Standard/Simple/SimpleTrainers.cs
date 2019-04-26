@@ -164,8 +164,30 @@ namespace Microsoft.ML.Trainers
     }
 
     /// <summary>
-    /// Learns the prior distribution for 0/1 class labels and outputs that.
+    /// The <see cref="IEstimator{TTransformer}"/> for predicting a target using a binary classification model.
     /// </summary>
+    /// <remarks>
+    /// <format type="text/markdown"><![CDATA[
+    /// To create this trainer, use [Prior](xref:Microsoft.ML.StandardTrainersCatalog.Prior(Microsoft.ML.BinaryClassificationCatalog.BinaryClassificationTrainers,System.String,System.String))
+    ///
+    /// [!include[io](~/../docs/samples/docs/api-reference/io-columns-binary-classification.md)]
+    ///
+    /// ### Trainer Characteristics
+    /// |  |  |
+    /// | -- | -- |
+    /// | Machine learning task | Binary classification |
+    /// | Is normalization required? | No |
+    /// | Is caching required? | No |
+    /// | Required NuGet in addition to Microsoft.ML | None |
+    ///
+    /// ### Training Algorithm Details
+    /// Learns the prior distribution for 0/1 class labels and outputs that.
+    ///
+    /// Check the See Also section for links to usage examples.
+    /// ]]>
+    /// </format>
+    /// </remarks>
+    /// <seealso cref="Microsoft.ML.StandardTrainersCatalog.Prior(Microsoft.ML.BinaryClassificationCatalog.BinaryClassificationTrainers,System.String,System.String)"/>
     public sealed class PriorTrainer : ITrainer<PriorModelParameters>,
         ITrainerEstimator<BinaryPredictionTransformer<PriorModelParameters>, PriorModelParameters>
     {
@@ -230,7 +252,7 @@ namespace Microsoft.ML.Trainers
             data.CheckBinaryLabel();
             _host.CheckParam(data.Schema.Label.HasValue, nameof(data), "Missing Label column");
             var labelCol = data.Schema.Label.Value;
-            _host.CheckParam(labelCol.Type == NumberDataViewType.Single, nameof(data), "Invalid type for Label column");
+            _host.CheckParam(labelCol.Type == BooleanDataViewType.Instance, nameof(data), "Invalid type for Label column");
 
             double pos = 0;
             double neg = 0;
@@ -243,9 +265,9 @@ namespace Microsoft.ML.Trainers
 
             using (var cursor = data.Data.GetRowCursor(cols))
             {
-                var getLab = cursor.GetLabelFloatGetter(data);
+                var getLab = cursor.GetGetter<bool>(data.Schema.Label.Value);
                 var getWeight = colWeight >= 0 ? cursor.GetGetter<float>(data.Schema.Weight.Value) : null;
-                float lab = default;
+                bool lab = default;
                 float weight = 1;
                 while (cursor.MoveNext())
                 {
@@ -258,9 +280,9 @@ namespace Microsoft.ML.Trainers
                     }
 
                     // Testing both directions effectively ignores NaNs.
-                    if (lab > 0)
+                    if (lab)
                         pos += weight;
-                    else if (lab <= 0)
+                    else
                         neg += weight;
                 }
             }
@@ -302,6 +324,9 @@ namespace Microsoft.ML.Trainers
         }
     }
 
+    /// <summary>
+    /// Model parameters for <see cref="PriorTrainer"/>.
+    /// </summary>
     public sealed class PriorModelParameters :
         ModelParametersBase<float>,
         IDistPredictorProducing<float, float>,

@@ -1,8 +1,9 @@
 ﻿using System;
 using System.IO;
+using Microsoft.ML;
 using Microsoft.ML.Data;
 
-namespace Microsoft.ML.Samples.Dynamic
+namespace Samples.Dynamic
 {
     public static class TextClassification
     {
@@ -12,7 +13,7 @@ namespace Microsoft.ML.Samples.Dynamic
         /// </summary>
         public static void Example()
         {
-            string modelLocation = SamplesUtils.DatasetUtils.DownloadTensorFlowSentimentModel();
+            string modelLocation = Microsoft.ML.SamplesUtils.DatasetUtils.DownloadTensorFlowSentimentModel();
 
             var mlContext = new MLContext();
             var data = new[] { new IMDBSentiment() {
@@ -72,7 +73,7 @@ namespace Microsoft.ML.Samples.Dynamic
                 .Append(mlContext.Transforms.Conversion.MapValue("VariableLenghtFeatures", lookupMap,
                     lookupMap.Schema["Words"], lookupMap.Schema["Ids"], "TokenizedWords"))
                 .Append(mlContext.Transforms.CustomMapping(ResizeFeaturesAction, "Resize"))
-                .Append(tensorFlowModel.ScoreTensorFlowModel(new[] { "Prediction/Softmax" }, new[] { "Features" }))
+                .Append(tensorFlowModel.ScoreTensorFlowModel("Prediction/Softmax", "Features"))
                 .Append(mlContext.Transforms.CopyColumns("Prediction", "Prediction/Softmax"))
                 .Fit(dataView);
             var engine = mlContext.Model.CreatePredictionEngine<IMDBSentiment, OutputScores>(model);

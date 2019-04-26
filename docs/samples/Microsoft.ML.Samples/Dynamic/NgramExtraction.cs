@@ -1,8 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
+using Microsoft.ML;
 using Microsoft.ML.Data;
 
-namespace Microsoft.ML.Samples.Dynamic
+namespace Samples.Dynamic
 {
     public static partial class TransformSamples
     {
@@ -13,7 +14,7 @@ namespace Microsoft.ML.Samples.Dynamic
             var ml = new MLContext();
 
             // Get a small dataset as an IEnumerable and convert to IDataView.
-            IEnumerable<SamplesUtils.DatasetUtils.SampleSentimentData> data = SamplesUtils.DatasetUtils.GetSentimentData();
+            IEnumerable<Microsoft.ML.SamplesUtils.DatasetUtils.SampleSentimentData> data = Microsoft.ML.SamplesUtils.DatasetUtils.GetSentimentData();
             var trainData = ml.Data.LoadFromEnumerable(data);
 
             // Preview of the data.
@@ -23,7 +24,7 @@ namespace Microsoft.ML.Samples.Dynamic
             // false        ==RUDE== Dude, 2.
             // true          Until the next game, this is the best Xbox game!
 
-            // A pipeline to tokenize text as characters and then combine them together into ngrams
+            // A pipeline to tokenize text as characters and then combine them together into n-grams
             // The pipeline uses the default settings to featurize.
 
             var charsPipeline = ml.Transforms.Text.TokenizeIntoCharactersAsKeys("Chars", "SentimentText", useMarkerCharacters: false);
