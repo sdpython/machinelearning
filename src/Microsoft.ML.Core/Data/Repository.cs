@@ -36,8 +36,8 @@ namespace Microsoft.ML
     /// <summary>
     /// Abstraction around a <see cref="ZipArchive"/> or other hierarchical storage.
     /// </summary>
-    /*[BestFriend]
-    internal*/public abstract class Repository : IDisposable
+    [BestFriend]
+    internal abstract class Repository : IDisposable
     {
         public sealed class Entry : IDisposable
         {
@@ -434,8 +434,8 @@ namespace Microsoft.ML
         }
     }
 
-    /*[BestFriend]
-    internal*/public sealed class RepositoryReader : Repository
+    [BestFriend]
+    internal sealed class RepositoryReader : Repository
     {
         private ZipArchive _archive;
 
