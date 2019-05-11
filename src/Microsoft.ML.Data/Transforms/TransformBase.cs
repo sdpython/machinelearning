@@ -85,6 +85,13 @@ namespace Microsoft.ML.Data
             return GetRowCursorCore(columnsNeeded, rng);
         }
 
+        public DataViewRowCursor GetRowCursorSingle(IEnumerable<DataViewSchema.Column> columnsNeeded, Random rand = null)
+        {
+            Host.CheckValueOrNull(rand);
+            var rng = CanShuffle ? rand : null;
+            return GetRowCursorCore(columnsNeeded, rng);
+        }
+
         /// <summary>
         /// This returns false when this transform cannot support parallel cursors, null when it
         /// doesn't care, and true when it benefits from parallel cursors. For example, a transform
