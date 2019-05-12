@@ -56,7 +56,7 @@ namespace Microsoft.ML.Data
         ITransformer GetTransformer();
     }
     [BestFriend]
-    internal delegate void SignatureLoadRowMapper(ModelLoadContext ctx, DataViewSchema schema);
+    internal public delegate void SignatureLoadRowMapper(ModelLoadContext ctx, DataViewSchema schema);
 
     /// <summary>
     /// This class is a transform that can add any number of output columns, that depend on any number of input columns.
@@ -204,7 +204,8 @@ namespace Microsoft.ML.Data
             var inputs = Source.GetRowCursorSet(inputCols, n, rand);
             Host.AssertNonEmpty(inputs);
 
-            if (inputs.Length == 1 && n > 1 && _bindings.AddedColumnIndices.Any(predicate))
+            if (inputs.Length == 1 && n > 1 && _bindings.AddedColumnIndices.Any(predicate) &&
+                (inputs[0].Count() == -1 || inputs[0].Count() > 1))  // to skip multithreading
                 inputs = DataViewUtils.CreateSplitCursors(Host, inputs[0], n);
             Host.AssertNonEmpty(inputs);
 

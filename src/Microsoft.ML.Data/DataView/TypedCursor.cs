@@ -208,7 +208,7 @@ namespace Microsoft.ML.Data
             var inputs = _data.GetRowCursorSet(_data.Schema.Where(col => _columnIndices.Contains(col.Index) || additionalColumnsPredicate(col.Index)), n, rand);
             _host.AssertNonEmpty(inputs);
 
-            if (inputs.Length == 1 && n > 1)
+            if (inputs.Length == 1 && n > 1 && (inputs[0].Count() == -1 || inputs[0].Count() > 1))  // to skip multithreading
                 inputs = DataViewUtils.CreateSplitCursors(_host, inputs[0], n);
             _host.AssertNonEmpty(inputs);
 

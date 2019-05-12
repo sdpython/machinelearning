@@ -68,5 +68,7 @@ namespace Microsoft.ML.Data
         public sealed override bool MoveNext() => Root.MoveNext();
 
         public sealed override ValueGetter<DataViewRowId> GetIdGetter() => Input.GetIdGetter();
+
+        public sealed override int Count() { return Root.Count(); }
     }
 }

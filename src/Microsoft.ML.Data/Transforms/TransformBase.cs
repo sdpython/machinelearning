@@ -18,7 +18,7 @@ namespace Microsoft.ML.Data
     /// Base class for transforms.
     /// </summary>
     [BestFriend]
-    internal abstract class TransformBase : IDataTransform
+    internal public abstract class TransformBase : IDataTransform
     {
         protected readonly IHost Host;
 
@@ -112,7 +112,7 @@ namespace Microsoft.ML.Data
     /// Base class for transforms that map single input row to single output row.
     /// </summary>
     [BestFriend]
-    internal abstract class RowToRowTransformBase : TransformBase
+    internal public abstract class RowToRowTransformBase : TransformBase
     {
         protected RowToRowTransformBase(IHostEnvironment env, string name, IDataView input)
             : base(env, name, input)
@@ -159,7 +159,7 @@ namespace Microsoft.ML.Data
     }
 
     [BestFriend]
-    internal abstract class RowToRowMapperTransformBase : RowToRowTransformBase, IRowToRowMapper
+    internal public abstract class RowToRowMapperTransformBase : RowToRowTransformBase, IRowToRowMapper
     {
         protected RowToRowMapperTransformBase(IHostEnvironment env, string name, IDataView input)
             : base(env, name, input)
@@ -264,7 +264,7 @@ namespace Microsoft.ML.Data
     /// This class provides the implementation of ISchema and IRowCursor.
     /// </summary>
     [BestFriend]
-    internal abstract class OneToOneTransformBase : RowToRowMapperTransformBase, ITransposeDataView, ITransformCanSavePfa,
+    internal public abstract class OneToOneTransformBase : RowToRowMapperTransformBase, ITransposeDataView, ITransformCanSavePfa,
         ITransformCanSaveOnnx
     {
         /// <summary>
@@ -753,7 +753,8 @@ namespace Microsoft.ML.Data
             var inputs = Source.GetRowCursorSet(inputCols, n, rand);
             Host.AssertNonEmpty(inputs);
 
-            if (inputs.Length == 1 && n > 1 && WantParallelCursors(predicate))
+            if (inputs.Length == 1 && n > 1 && WantParallelCursors(predicate) &&
+                (inputs[0].Count() == -1 || inputs[0].Count() > 1))  // to skip multithreading
                 inputs = DataViewUtils.CreateSplitCursors(Host, inputs[0], n);
             Host.AssertNonEmpty(inputs);
 
