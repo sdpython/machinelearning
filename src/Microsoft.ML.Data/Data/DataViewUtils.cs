@@ -326,6 +326,8 @@ namespace Microsoft.ML.Data
                 ch.CheckNonEmpty(inputs, nameof(inputs));
                 if (inputs.Length == 1)
                     return inputs[0];
+                if (inputs.Length > 1 && inputs[0].Count() == 1)
+                    throw Contacts.Except("Single thread cursor requested but multiple cursors were produced.");
                 ch.CheckParam(SameSchemaAndActivity(inputs), nameof(inputs), "Inputs not compatible for consolidation");
 
                 DataViewRowCursor cursor = inputs[0];

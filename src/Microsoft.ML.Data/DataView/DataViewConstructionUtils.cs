@@ -495,6 +495,7 @@ namespace Microsoft.ML.Data
                 /// </summary>
                 public override bool IsColumnActive(DataViewSchema.Column column) => _toWrap.IsColumnActive(column);
                 public override bool MoveNext() => _toWrap.MoveNext();
+                public sealed override int Count() { return _toWrap.Count(); }
             }
 
             public abstract class DataViewCursorBase : InputRowBase<TRow>
