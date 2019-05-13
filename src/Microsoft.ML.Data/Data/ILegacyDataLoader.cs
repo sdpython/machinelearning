@@ -91,6 +91,9 @@ namespace Microsoft.ML.Data
     [BestFriend]
     internal delegate void SignatureLoadDataTransform(ModelLoadContext ctx, IDataView input);
 
+    /// <summary>
+    /// Separate Source and methods.
+    /// </summary>
     [BestFriend]
     internal interface IDataTransformSource
     {
