@@ -187,6 +187,13 @@ namespace Microsoft.ML
     }
 
     /// <summary>
+    /// Prevents from using multithreading while creating cursors.
+    /// </summary>
+    interface IDataViewSingleThreaded
+    {
+    }
+
+    /// <summary>
     /// Class used to cursor through rows of an <see cref="IDataView"/>.
     /// </summary>
     /// <remarks>

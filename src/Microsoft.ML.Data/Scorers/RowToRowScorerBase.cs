@@ -149,7 +149,7 @@ namespace Microsoft.ML.Data
             Contracts.AssertNonEmpty(inputs);
 
             if (inputs.Length == 1 && n > 1 && WantParallelCursors(predicate) && (Source.GetRowCount() ?? int.MaxValue) > n &&
-                (inputs[0].Count() == -1 || inputs[0].Count() > 1))  // to skip multithreading
+                inputs[0].Count() != 1 && !SingleThread())  // to skip multithreading
                 inputs = DataViewUtils.CreateSplitCursors(Host, inputs[0], n);
             Contracts.AssertNonEmpty(inputs);
 

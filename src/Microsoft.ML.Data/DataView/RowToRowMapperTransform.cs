@@ -205,7 +205,7 @@ namespace Microsoft.ML.Data
             Host.AssertNonEmpty(inputs);
 
             if (inputs.Length == 1 && n > 1 && _bindings.AddedColumnIndices.Any(predicate) &&
-                (inputs[0].Count() == -1 || inputs[0].Count() > 1))  // to skip multithreading
+                inputs[0].Count() != 1 && !SingleThread())  // to skip multithreading
                 inputs = DataViewUtils.CreateSplitCursors(Host, inputs[0], n);
             Host.AssertNonEmpty(inputs);
 

@@ -747,7 +747,7 @@ namespace Microsoft.ML.Data
             Host.AssertNonEmpty(inputs);
 
             if (inputs.Length == 1 && n > 1 && WantParallelCursors(predicate) &&
-                (inputs[0].Count() == -1 || inputs[0].Count() > 1))  // to skip multithreading
+                inputs[0].Count() != 1 && !SingleThread())  // to skip multithreading
                 inputs = DataViewUtils.CreateSplitCursors(Host, inputs[0], n);
             Host.AssertNonEmpty(inputs);
 
@@ -756,6 +756,15 @@ namespace Microsoft.ML.Data
             for (int i = 0; i < inputs.Length; i++)
                 cursors[i] = new Cursor(Host, this, inputs[i], active);
             return cursors;
+        }
+
+
+        public virtual bool SingleThread()
+        {
+            var tf = Source as TransformBase;
+            if (tf != null)
+                return tf.SingleThreaded();
+            return (Source as IDataViewSingleThreaded) != null;
         }
 
         /// <summary>
