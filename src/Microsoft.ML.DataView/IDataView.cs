@@ -189,7 +189,7 @@ namespace Microsoft.ML
     /// <summary>
     /// Prevents from using multithreading while creating cursors.
     /// </summary>
-    interface IDataViewSingleThreaded
+    public interface IDataViewSingleThreaded
     {
     }
 

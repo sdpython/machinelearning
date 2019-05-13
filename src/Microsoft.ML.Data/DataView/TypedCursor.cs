@@ -217,7 +217,7 @@ namespace Microsoft.ML.Data
                  .ToArray();
         }
 
-        public virtual bool SingleThread()
+        public bool SingleThread()
         {
             return (_data as IDataViewSingleThreaded) != null;
         }

@@ -76,13 +76,21 @@ namespace Microsoft.ML.Data
             // instead of before. This is likely to produce better performance, for example, when
             // this is RangeFilter.
             DataViewRowCursor curs;
-            if (useParallel != false &&
+            if (useParallel != false && !SingleThread() &&
                 DataViewUtils.TryCreateConsolidatingCursor(out curs, this, columnsNeeded, Host, rng))
             {
                 return curs;
             }
 
             return GetRowCursorCore(columnsNeeded, rng);
+        }
+
+        public virtual bool SingleThread()
+        {
+            var tf = Source as TransformBase;
+            if (tf != null)
+                return tf.SingleThread();
+            return (Source as IDataViewSingleThreaded) != null;
         }
 
         /// <summary>
@@ -756,15 +764,6 @@ namespace Microsoft.ML.Data
             for (int i = 0; i < inputs.Length; i++)
                 cursors[i] = new Cursor(Host, this, inputs[i], active);
             return cursors;
-        }
-
-
-        public virtual bool SingleThread()
-        {
-            var tf = Source as TransformBase;
-            if (tf != null)
-                return tf.SingleThreaded();
-            return (Source as IDataViewSingleThreaded) != null;
         }
 
         /// <summary>
