@@ -90,6 +90,9 @@ namespace Microsoft.ML.Data
             var tf = Source as TransformBase;
             if (tf != null)
                 return tf.SingleThread();
+            var tf2 = Source as IDataTransformPropagateSingleThread;
+            if (tf2 != null)
+                return tf2.SingleThread();
             return (Source as IDataViewSingleThreaded) != null;
         }
 
