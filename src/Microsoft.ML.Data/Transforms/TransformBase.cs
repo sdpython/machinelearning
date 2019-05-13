@@ -159,7 +159,7 @@ namespace Microsoft.ML.Data
     }
 
     [BestFriend]
-    internal public abstract class RowToRowMapperTransformBase : RowToRowTransformBase, IRowToRowMapper
+    internal abstract class RowToRowMapperTransformBase : RowToRowTransformBase, IRowToRowMapper
     {
         protected RowToRowMapperTransformBase(IHostEnvironment env, string name, IDataView input)
             : base(env, name, input)
