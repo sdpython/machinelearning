@@ -56,7 +56,7 @@ namespace Microsoft.ML.Data
         ITransformer GetTransformer();
     }
     [BestFriend]
-    internal public delegate void SignatureLoadRowMapper(ModelLoadContext ctx, DataViewSchema schema);
+    internal delegate void SignatureLoadRowMapper(ModelLoadContext ctx, DataViewSchema schema);
 
     /// <summary>
     /// This class is a transform that can add any number of output columns, that depend on any number of input columns.
