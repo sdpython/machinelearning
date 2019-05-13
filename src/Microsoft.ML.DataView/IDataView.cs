@@ -177,6 +177,13 @@ namespace Microsoft.ML
         protected virtual void Dispose(bool disposing)
         {
         }
+
+        /// <summary>
+        /// -1 or value > 1 tells ml.net that the cursor can be parallized
+        /// if needed. 1 means the cursor only holds one value and must
+        /// not be parallized.
+        /// </summary>
+        public virtual int Count() { return -1; }
     }
 
     /// <summary>
@@ -195,12 +202,5 @@ namespace Microsoft.ML
         /// move to the first row. Returns <see langword="false"/> if there are no more rows.
         /// </summary>
         public abstract bool MoveNext();
-
-        /// <summary>
-        /// -1 or value > 1 tells ml.net that the cursor can be parallized
-        /// if needed. 1 means the cursor only holds one value and must
-        /// not be parallized.
-        /// </summary>
-        public virtual int Count() { return -1; }
     }
 }

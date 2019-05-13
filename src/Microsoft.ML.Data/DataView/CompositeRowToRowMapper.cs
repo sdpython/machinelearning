@@ -102,6 +102,7 @@ namespace Microsoft.ML.Data
             public override DataViewSchema Schema => _row.Schema;
             public override long Position => _row.Position;
             public override long Batch => _row.Batch;
+            public override int Count() { return _row.Count(); }
 
             /// <summary>
             /// Returns a value getter delegate to fetch the value of column with the given columnIndex, from the row.
