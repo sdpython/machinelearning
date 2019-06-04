@@ -324,6 +324,10 @@ namespace Microsoft.ML.Data
 
                     del = CreateDirectSetter<int>;
                 }
+                else if (DataViewTypeManager.Knows(colType))
+                {
+                    del = CreateDirectSetter<int>;
+                }
                 else
                 {
                     // REVIEW: Is this even possible?
