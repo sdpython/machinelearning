@@ -39,7 +39,7 @@ namespace Microsoft.ML.Data.Conversion
     /// This type exists to provide efficient delegates for conversion between standard ColumnTypes,
     /// as discussed in the IDataView Type System Specification. This is a singleton class.
     /// Some conversions are "standard" conversions, conforming to the details in the spec.
-    /// Others are auxilliary conversions. The use of auxilliary conversions should be limited to
+    /// Others are auxiliary conversions. The use of auxiliary conversions should be limited to
     /// situations that genuinely require them and have been well designed in the particular context.
     /// For example, this contains non-standard conversions from the standard primitive types to
     /// text (and StringBuilder). These are needed by the standard TextSaver, which handles
@@ -231,6 +231,7 @@ namespace Microsoft.ML.Data.Conversion
             AddStd<DT, I8>(Convert);
             AddStd<DT, R4>(Convert);
             AddStd<DT, R8>(Convert);
+            AddStd<DT, DT>(Convert);
             AddAux<DT, SB>(Convert);
 
             AddStd<DZ, I8>(Convert);
@@ -395,7 +396,7 @@ namespace Microsoft.ML.Data.Conversion
             identity = false;
             if (typeSrc is KeyDataViewType keySrc)
             {
-                // Key types are only convertable to compatible key types or unsigned integer
+                // Key types are only convertible to compatible key types or unsigned integer
                 // types that are large enough.
                 if (typeDst is KeyDataViewType keyDst)
                 {
@@ -1005,7 +1006,7 @@ namespace Microsoft.ML.Data.Conversion
         public bool TryParse(in TX src, out UG dst)
         {
             var span = src.Span;
-            // REVIEW: Accomodate numeric inputs?
+            // REVIEW: Accommodate numeric inputs?
             if (src.Length != 34 || span[0] != '0' || (span[1] != 'x' && span[1] != 'X'))
             {
                 dst = default(UG);
@@ -1180,7 +1181,7 @@ namespace Microsoft.ML.Data.Conversion
                 return false;
             }
             Contracts.Assert(res.HasValue);
-            Contracts.Check((I1)res == res, "Overflow or underflow occured while converting value in text to sbyte.");
+            Contracts.Check((I1)res == res, "Overflow or underflow occurred while converting value in text to sbyte.");
             dst = (I1)res;
             return true;
         }
@@ -1199,7 +1200,7 @@ namespace Microsoft.ML.Data.Conversion
                 return false;
             }
             Contracts.Assert(res.HasValue);
-            Contracts.Check((I2)res == res, "Overflow or underflow occured while converting value in text to short.");
+            Contracts.Check((I2)res == res, "Overflow or underflow occurred while converting value in text to short.");
             dst = (I2)res;
             return true;
         }
@@ -1218,7 +1219,7 @@ namespace Microsoft.ML.Data.Conversion
                 return false;
             }
             Contracts.Assert(res.HasValue);
-            Contracts.Check((I4)res == res, "Overflow or underflow occured while converting value in text to int.");
+            Contracts.Check((I4)res == res, "Overflow or underflow occurred while converting value in text to int.");
             dst = (I4)res;
             return true;
         }
@@ -1398,7 +1399,7 @@ namespace Microsoft.ML.Data.Conversion
         {
             TryParseSigned(I1.MaxValue, in src, out long? res);
             Contracts.Check(res.HasValue, "Value could not be parsed from text to sbyte.");
-            Contracts.Check((I1)res == res, "Overflow or underflow occured while converting value in text to sbyte.");
+            Contracts.Check((I1)res == res, "Overflow or underflow occurred while converting value in text to sbyte.");
             return (I1)res;
         }
 
@@ -1406,7 +1407,7 @@ namespace Microsoft.ML.Data.Conversion
         {
             TryParseSigned(I2.MaxValue, in src, out long? res);
             Contracts.Check(res.HasValue, "Value could not be parsed from text to short.");
-            Contracts.Check((I2)res == res, "Overflow or underflow occured while converting value in text to short.");
+            Contracts.Check((I2)res == res, "Overflow or underflow occurred while converting value in text to short.");
             return (I2)res;
         }
 
@@ -1414,7 +1415,7 @@ namespace Microsoft.ML.Data.Conversion
         {
             TryParseSigned(I4.MaxValue, in src, out long? res);
             Contracts.Check(res.HasValue, "Value could not be parsed from text to int.");
-            Contracts.Check((I4)res == res, "Overflow or underflow occured while converting value in text to int.");
+            Contracts.Check((I4)res == res, "Overflow or underflow occurred while converting value in text to int.");
             return (I4)res;
         }
 
@@ -1673,5 +1674,9 @@ namespace Microsoft.ML.Data.Conversion
         public void Convert(in BL src, ref R8 dst) => dst = System.Convert.ToDouble(src);
         public void Convert(in BL src, ref BL dst) => dst = src;
         #endregion FromBL
+
+        #region ToDT
+        public void Convert(in DT src, ref DT dst) => dst = src;
+        #endregion ToDT
     }
 }

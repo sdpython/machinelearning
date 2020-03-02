@@ -1,5 +1,5 @@
 {
-  "irVersion": "3",
+  "irVersion": "6",
   "producerName": "ML.NET",
   "producerVersion": "##VERSION##",
   "domain": "machinelearning.dotnet",
@@ -51,13 +51,13 @@
           "Label"
         ],
         "output": [
-          "Label0"
+          "LabelEncoderOutput"
         ],
         "name": "LabelEncoder",
         "opType": "LabelEncoder",
         "attribute": [
           {
-            "name": "classes_strings",
+            "name": "keys_strings",
             "strings": [
               "NQ==",
               "Mw==",
@@ -78,19 +78,47 @@
             "type": "INT"
           },
           {
-            "name": "default_string",
-            "s": "IA==",
-            "type": "STRING"
+            "name": "values_int64s",
+            "ints": [
+              "1",
+              "2",
+              "3",
+              "4",
+              "5",
+              "6",
+              "7",
+              "8",
+              "9",
+              "10"
+            ],
+            "type": "INTS"
           }
         ],
         "domain": "ai.onnx.ml"
       },
       {
         "input": [
+          "LabelEncoderOutput"
+        ],
+        "output": [
+          "Label0"
+        ],
+        "name": "Cast",
+        "opType": "Cast",
+        "attribute": [
+          {
+            "name": "to",
+            "i": "12",
+            "type": "INT"
+          }
+        ]
+      },
+      {
+        "input": [
           "Features0"
         ],
         "output": [
-          "PredictedLabel",
+          "PredictedLabelInt64",
           "Score"
         ],
         "name": "LinearClassifier",
@@ -211,6 +239,127 @@
           {
             "name": "classlabels_ints",
             "ints": [
+              "1",
+              "2",
+              "3",
+              "4",
+              "5",
+              "6",
+              "7",
+              "8",
+              "9",
+              "10"
+            ],
+            "type": "INTS"
+          }
+        ],
+        "domain": "ai.onnx.ml"
+      },
+      {
+        "input": [
+          "PredictedLabelInt64"
+        ],
+        "output": [
+          "CastNodeOutput"
+        ],
+        "name": "Cast0",
+        "opType": "Cast",
+        "attribute": [
+          {
+            "name": "to",
+            "i": "12",
+            "type": "INT"
+          }
+        ]
+      },
+      {
+        "input": [
+          "CastNodeOutput"
+        ],
+        "output": [
+          "PredictedLabel"
+        ],
+        "name": "Unsqueeze",
+        "opType": "Unsqueeze",
+        "attribute": [
+          {
+            "name": "axes",
+            "ints": [
+              "0"
+            ],
+            "type": "INTS"
+          }
+        ]
+      },
+      {
+        "input": [
+          "Label0"
+        ],
+        "output": [
+          "Label.output"
+        ],
+        "name": "Identity",
+        "opType": "Identity"
+      },
+      {
+        "input": [
+          "Features0"
+        ],
+        "output": [
+          "Features.output"
+        ],
+        "name": "Identity0",
+        "opType": "Identity"
+      },
+      {
+        "input": [
+          "PredictedLabel"
+        ],
+        "output": [
+          "PredictedLabel.output"
+        ],
+        "name": "Identity1",
+        "opType": "Identity"
+      },
+      {
+        "input": [
+          "Score"
+        ],
+        "output": [
+          "Score.output"
+        ],
+        "name": "Identity2",
+        "opType": "Identity"
+      },
+      {
+        "input": [
+          "mlnet.Score.SlotNames"
+        ],
+        "output": [
+          "mlnet.Score.unusedOutput"
+        ],
+        "name": "mlnet.Score.SlotNames",
+        "opType": "LabelEncoder",
+        "attribute": [
+          {
+            "name": "keys_strings",
+            "strings": [
+              "NQ==",
+              "Mw==",
+              "Ng==",
+              "NA==",
+              "OA==",
+              "MQ==",
+              "Mg==",
+              "Nw==",
+              "MTA=",
+              "OQ=="
+            ],
+            "type": "STRINGS"
+          },
+          {
+            "name": "values_int64s",
+            "ints": [
               "0",
               "1",
               "2",
@@ -226,59 +375,32 @@
           }
         ],
         "domain": "ai.onnx.ml"
-      },
-      {
-        "input": [
-          "Label0"
-        ],
-        "output": [
-          "Label1"
-        ],
-        "name": "Identity",
-        "opType": "Identity"
-      },
-      {
-        "input": [
-          "Features0"
-        ],
-        "output": [
-          "Features1"
-        ],
-        "name": "Identity0",
-        "opType": "Identity"
-      },
-      {
-        "input": [
-          "PredictedLabel"
-        ],
-        "output": [
-          "PredictedLabel0"
-        ],
-        "name": "Identity1",
-        "opType": "Identity"
-      },
-      {
-        "input": [
-          "Score"
-        ],
-        "output": [
-          "Score0"
-        ],
-        "name": "Identity2",
-        "opType": "Identity"
       }
     ],
     "name": "model",
+    "initializer": [
+      {
+        "dims": [
+          "1",
+          "1"
+        ],
+        "dataType": 8,
+        "stringData": [
+          "b25l"
+        ],
+        "name": "mlnet.Score.SlotNames"
+      }
+    ],
     "input": [
       {
         "name": "Label",
         "type": {
           "tensorType": {
-            "elemType": "STRING",
+            "elemType": 8,
             "shape": {
               "dim": [
                 {
-                  "dimValue": "1"
+                  "dimValue": "-1"
                 },
                 {
                   "dimValue": "1"
@@ -292,11 +414,11 @@
         "name": "Features",
         "type": {
           "tensorType": {
-            "elemType": "FLOAT",
+            "elemType": 1,
             "shape": {
               "dim": [
                 {
-                  "dimValue": "1"
+                  "dimValue": "-1"
                 },
                 {
                   "dimValue": "8"
@@ -309,14 +431,14 @@
     ],
     "output": [
       {
-        "name": "Label1",
+        "name": "Label.output",
         "type": {
           "tensorType": {
-            "elemType": "INT64",
+            "elemType": 12,
             "shape": {
               "dim": [
                 {
-                  "dimValue": "1"
+                  "dimValue": "-1"
                 },
                 {
                   "dimValue": "1"
@@ -327,14 +449,14 @@
         }
       },
       {
-        "name": "Features1",
+        "name": "Features.output",
         "type": {
           "tensorType": {
-            "elemType": "FLOAT",
+            "elemType": 1,
             "shape": {
               "dim": [
                 {
-                  "dimValue": "1"
+                  "dimValue": "-1"
                 },
                 {
                   "dimValue": "8"
@@ -345,14 +467,14 @@
         }
       },
       {
-        "name": "PredictedLabel0",
+        "name": "PredictedLabel.output",
         "type": {
           "tensorType": {
-            "elemType": "INT64",
+            "elemType": 12,
             "shape": {
               "dim": [
                 {
-                  "dimValue": "1"
+                  "dimValue": "-1"
                 },
                 {
                   "dimValue": "1"
@@ -363,17 +485,35 @@
         }
       },
       {
-        "name": "Score0",
+        "name": "Score.output",
         "type": {
           "tensorType": {
-            "elemType": "FLOAT",
+            "elemType": 1,
             "shape": {
               "dim": [
                 {
-                  "dimValue": "1"
+                  "dimValue": "-1"
                 },
                 {
                   "dimValue": "10"
+                }
+              ]
+            }
+          }
+        }
+      },
+      {
+        "name": "mlnet.Score.unusedOutput",
+        "type": {
+          "tensorType": {
+            "elemType": 7,
+            "shape": {
+              "dim": [
+                {
+                  "dimValue": "-1"
+                },
+                {
+                  "dimValue": "1"
                 }
               ]
             }
@@ -386,11 +526,11 @@
         "name": "Features0",
         "type": {
           "tensorType": {
-            "elemType": "FLOAT",
+            "elemType": 1,
             "shape": {
               "dim": [
                 {
-                  "dimValue": "1"
+                  "dimValue": "-1"
                 },
                 {
                   "dimValue": "8"
@@ -404,14 +544,140 @@
         "name": "Label0",
         "type": {
           "tensorType": {
-            "elemType": "INT64",
+            "elemType": 12,
             "shape": {
               "dim": [
                 {
-                  "dimValue": "1"
+                  "dimValue": "-1"
                 },
                 {
                   "dimValue": "1"
+                }
+              ]
+            }
+          }
+        }
+      },
+      {
+        "name": "LabelEncoderOutput",
+        "type": {
+          "tensorType": {
+            "elemType": 7,
+            "shape": {
+              "dim": [
+                {
+                  "dimValue": "-1"
+                },
+                {
+                  "dimValue": "1"
+                }
+              ]
+            }
+          }
+        }
+      },
+      {
+        "name": "PredictedLabel",
+        "type": {
+          "tensorType": {
+            "elemType": 12,
+            "shape": {
+              "dim": [
+                {
+                  "dimValue": "-1"
+                },
+                {
+                  "dimValue": "1"
+                }
+              ]
+            }
+          }
+        }
+      },
+      {
+        "name": "Score",
+        "type": {
+          "tensorType": {
+            "elemType": 1,
+            "shape": {
+              "dim": [
+                {
+                  "dimValue": "-1"
+                },
+                {
+                  "dimValue": "10"
+                }
+              ]
+            }
+          }
+        }
+      },
+      {
+        "name": "Label.output",
+        "type": {
+          "tensorType": {
+            "elemType": 12,
+            "shape": {
+              "dim": [
+                {
+                  "dimValue": "-1"
+                },
+                {
+                  "dimValue": "1"
+                }
+              ]
+            }
+          }
+        }
+      },
+      {
+        "name": "Features.output",
+        "type": {
+          "tensorType": {
+            "elemType": 1,
+            "shape": {
+              "dim": [
+                {
+                  "dimValue": "-1"
+                },
+                {
+                  "dimValue": "8"
+                }
+              ]
+            }
+          }
+        }
+      },
+      {
+        "name": "PredictedLabel.output",
+        "type": {
+          "tensorType": {
+            "elemType": 12,
+            "shape": {
+              "dim": [
+                {
+                  "dimValue": "-1"
+                },
+                {
+                  "dimValue": "1"
+                }
+              ]
+            }
+          }
+        }
+      },
+      {
+        "name": "Score.output",
+        "type": {
+          "tensorType": {
+            "elemType": 1,
+            "shape": {
+              "dim": [
+                {
+                  "dimValue": "-1"
+                },
+                {
+                  "dimValue": "10"
                 }
               ]
             }
@@ -423,10 +689,10 @@
   "opsetImport": [
     {
       "domain": "ai.onnx.ml",
-      "version": "1"
+      "version": "2"
     },
     {
-      "version": "7"
+      "version": "11"
     }
   ]
 }

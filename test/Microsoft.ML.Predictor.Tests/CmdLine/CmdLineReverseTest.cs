@@ -9,10 +9,11 @@ using Microsoft.ML.Internal.Utilities;
 using Microsoft.ML.Runtime;
 using Microsoft.ML.TestFramework;
 using Xunit;
+using Xunit.Abstractions;
 
 namespace Microsoft.ML.RunTests
 {
-    public class CmdLineReverseTests
+    public class CmdLineReverseTests : BaseTestClass
     {
         /// <summary>
         /// This tests CmdParser.GetSettings
@@ -80,7 +81,7 @@ namespace Microsoft.ML.RunTests
         [TestCategory("Cmd Parsing")]
         public void NewTest()
         {
-            var ml = new MLContext();
+            var ml = new MLContext(1);
             ml.AddStandardComponents();
             var classes = Utils.MarshalInvoke(ml.ComponentCatalog.FindLoadableClasses<int>, typeof(SignatureCalibrator));
             foreach (var cls in classes)
@@ -106,7 +107,7 @@ namespace Microsoft.ML.RunTests
             [Argument(ArgumentType.AtMostOnce)]
             public int once = 1;
 
-            [Argument(ArgumentType.LastOccurenceWins)]
+            [Argument(ArgumentType.LastOccurrenceWins)]
             public string text1 = "";
 
             [Argument(ArgumentType.AtMostOnce)]
@@ -185,13 +186,17 @@ namespace Microsoft.ML.RunTests
                 commandLineLeft.GetSettingsString() == commandLineRight.GetSettingsString();
         }
 
-        private static readonly MethodInfo CreateComponentFactoryMethod = typeof(CmdParser)
+        private static readonly MethodInfo _createComponentFactoryMethod = typeof(CmdParser)
             .GetNestedType("ComponentFactoryFactory", BindingFlags.NonPublic)
             .GetMethod("CreateComponentFactory");
 
+        public CmdLineReverseTests(ITestOutputHelper output) : base(output)
+        {
+        }
+
         private static IComponentFactory<SimpleArg> CreateComponentFactory(string name, string settings)
         {
-            return (IComponentFactory<SimpleArg>)CreateComponentFactoryMethod.Invoke(null,
+            return (IComponentFactory<SimpleArg>)_createComponentFactoryMethod.Invoke(null,
                 new object[]
                 {
                     typeof(IComponentFactory<SimpleArg>),

@@ -258,6 +258,13 @@ namespace Microsoft.ML
                 Evaluate(x.Scores, labelColumnName), x.Scores, x.Fold)).ToArray();
         }
 
+        /// <summary>
+        /// Method to modify the threshold to existing model and return modified model.
+        /// </summary>
+        /// <typeparam name="TModel">The type of the model parameters.</typeparam>
+        /// <param name="model">Existing model to modify threshold.</param>
+        /// <param name="threshold">New threshold.</param>
+        /// <returns>New model with modified threshold.</returns>
         public BinaryPredictionTransformer<TModel> ChangeModelThreshold<TModel>(BinaryPredictionTransformer<TModel> model, float threshold)
              where TModel : class
         {
@@ -640,6 +647,21 @@ namespace Microsoft.ML
         public RankingMetrics Evaluate(IDataView data,
             string labelColumnName = DefaultColumnNames.Label,
             string rowGroupColumnName = DefaultColumnNames.GroupId,
+            string scoreColumnName = DefaultColumnNames.Score) => Evaluate(data, null, labelColumnName, rowGroupColumnName, scoreColumnName);
+
+        /// <summary>
+        /// Evaluates scored ranking data.
+        /// </summary>
+        /// <param name="data">The scored data.</param>
+        /// <param name="options">Options to control the evaluation result.</param>
+        /// <param name="labelColumnName">The name of the label column in <paramref name="data"/>.</param>
+        /// <param name="rowGroupColumnName">The name of the groupId column in <paramref name="data"/>.</param>
+        /// <param name="scoreColumnName">The name of the score column in <paramref name="data"/>.</param>
+        /// <returns>The evaluation results for these calibrated outputs.</returns>
+        public RankingMetrics Evaluate(IDataView data,
+            RankingEvaluatorOptions options,
+            string labelColumnName = DefaultColumnNames.Label,
+            string rowGroupColumnName = DefaultColumnNames.GroupId,
             string scoreColumnName = DefaultColumnNames.Score)
         {
             Environment.CheckValue(data, nameof(data));
@@ -647,7 +669,7 @@ namespace Microsoft.ML
             Environment.CheckNonEmpty(scoreColumnName, nameof(scoreColumnName));
             Environment.CheckNonEmpty(rowGroupColumnName, nameof(rowGroupColumnName));
 
-            var eval = new RankingEvaluator(Environment, new RankingEvaluator.Arguments() { });
+            var eval = new RankingEvaluator(Environment, options ?? new RankingEvaluatorOptions() { });
             return eval.Evaluate(data, labelColumnName, rowGroupColumnName, scoreColumnName);
         }
     }
@@ -702,6 +724,22 @@ namespace Microsoft.ML
 
             var eval = new AnomalyDetectionEvaluator(Environment, args);
             return eval.Evaluate(data, labelColumnName, scoreColumnName, predictedLabelColumnName);
+        }
+
+        /// <summary>
+        /// Creates a new <see cref="AnomalyPredictionTransformer{TModel}"/> with the specified <paramref name="threshold"/>.
+        /// If the provided <paramref name="threshold"/> is the same as the <paramref name="model"/> threshold it simply returns <paramref name="model"/>.
+        /// Note that by default the threshold is 0.5 and valid scores range from 0 to 1.
+        /// </summary>
+        /// <param name="model">A trained <see cref="AnomalyPredictionTransformer{TModel}"/>.</param>
+        /// <param name="threshold">The new threshold value that will be used to determine the label of a data point
+        /// based on the predicted score by the model.</param>
+        public AnomalyPredictionTransformer<TModel> ChangeModelThreshold<TModel>(AnomalyPredictionTransformer<TModel> model, float threshold)
+            where TModel : class
+        {
+            if (model.Threshold == threshold)
+                return model;
+            return new AnomalyPredictionTransformer<TModel>(Environment, model.Model, model.TrainSchema, model.FeatureColumnName, threshold, model.ThresholdColumn);
         }
     }
 

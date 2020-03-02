@@ -26,7 +26,7 @@ namespace Microsoft.ML.Tests
         [Fact]
         public void TestEstimatorChain()
         {
-            var env = new MLContext();
+            var env = new MLContext(1);
             var dataFile = GetDataPath("images/images.tsv");
             var imageFolder = Path.GetDirectoryName(dataFile);
             var data = TextLoader.Create(env, new TextLoader.Options()
@@ -57,7 +57,7 @@ namespace Microsoft.ML.Tests
         [Fact]
         public void TestEstimatorSaveLoad()
         {
-            IHostEnvironment env = new MLContext();
+            IHostEnvironment env = new MLContext(1);
             var dataFile = GetDataPath("images/images.tsv");
             var imageFolder = Path.GetDirectoryName(dataFile);
             var data = TextLoader.Create(env, new TextLoader.Options()
@@ -101,7 +101,7 @@ namespace Microsoft.ML.Tests
         [Fact]
         public void TestSaveImages()
         {
-            var env = new MLContext();
+            var env = new MLContext(1);
             var dataFile = GetDataPath("images/images.tsv");
             var imageFolder = Path.GetDirectoryName(dataFile);
             var data = TextLoader.Create(env, new TextLoader.Options()
@@ -136,7 +136,7 @@ namespace Microsoft.ML.Tests
         [Fact]
         public void TestGreyscaleTransformImages()
         {
-            IHostEnvironment env = new MLContext();
+            IHostEnvironment env = new MLContext(1);
             var imageHeight = 150;
             var imageWidth = 100;
             var dataFile = GetDataPath("images/images.tsv");
@@ -270,7 +270,7 @@ namespace Microsoft.ML.Tests
         [Fact]
         public void TestBackAndForthConversionWithAlphaInterleave()
         {
-            IHostEnvironment env = new MLContext();
+            IHostEnvironment env = new MLContext(1);
             const int imageHeight = 100;
             const int imageWidth = 130;
             var dataFile = GetDataPath("images/images.tsv");
@@ -327,7 +327,7 @@ namespace Microsoft.ML.Tests
         [Fact]
         public void TestBackAndForthConversionWithoutAlphaInterleave()
         {
-            IHostEnvironment env = new MLContext();
+            IHostEnvironment env = new MLContext(1);
             const int imageHeight = 100;
             const int imageWidth = 130;
             var dataFile = GetDataPath("images/images.tsv");
@@ -384,7 +384,7 @@ namespace Microsoft.ML.Tests
         [Fact]
         public void TestBackAndForthConversionWithDifferentOrder()
         {
-            IHostEnvironment env = new MLContext();
+            IHostEnvironment env = new MLContext(1);
             const int imageHeight = 100;
             const int imageWidth = 130;
             var dataFile = GetDataPath("images/images.tsv");
@@ -443,7 +443,7 @@ namespace Microsoft.ML.Tests
         [Fact]
         public void TestBackAndForthConversionWithAlphaNoInterleave()
         {
-            IHostEnvironment env = new MLContext();
+            IHostEnvironment env = new MLContext(1);
             const int imageHeight = 100;
             const int imageWidth = 130;
             var dataFile = GetDataPath("images/images.tsv");
@@ -500,7 +500,7 @@ namespace Microsoft.ML.Tests
         [Fact]
         public void TestBackAndForthConversionWithoutAlphaNoInterleave()
         {
-            IHostEnvironment env = new MLContext();
+            IHostEnvironment env = new MLContext(1);
             const int imageHeight = 100;
             const int imageWidth = 130;
             var dataFile = GetDataPath("images/images.tsv");
@@ -557,7 +557,7 @@ namespace Microsoft.ML.Tests
         [Fact]
         public void TestBackAndForthConversionWithAlphaInterleaveNoOffset()
         {
-            IHostEnvironment env = new MLContext();
+            IHostEnvironment env = new MLContext(1);
             const int imageHeight = 100;
             const int imageWidth = 130;
             var dataFile = GetDataPath("images/images.tsv");
@@ -615,7 +615,7 @@ namespace Microsoft.ML.Tests
         [Fact]
         public void TestBackAndForthConversionWithoutAlphaInterleaveNoOffset()
         {
-            IHostEnvironment env = new MLContext();
+            IHostEnvironment env = new MLContext(1);
             const int imageHeight = 100;
             const int imageWidth = 130;
             var dataFile = GetDataPath("images/images.tsv");
@@ -672,7 +672,7 @@ namespace Microsoft.ML.Tests
         [Fact]
         public void TestBackAndForthConversionWithAlphaNoInterleaveNoOffset()
         {
-            IHostEnvironment env = new MLContext();
+            IHostEnvironment env = new MLContext(1);
             const int imageHeight = 100;
             var imageWidth = 130;
             var dataFile = GetDataPath("images/images.tsv");
@@ -730,7 +730,7 @@ namespace Microsoft.ML.Tests
         [Fact]
         public void TestBackAndForthConversionWithoutAlphaNoInterleaveNoOffset()
         {
-            IHostEnvironment env = new MLContext();
+            IHostEnvironment env = new MLContext(1);
             const int imageHeight = 100;
             const int imageWidth = 130;
             var dataFile = GetDataPath("images/images.tsv");
@@ -786,7 +786,7 @@ namespace Microsoft.ML.Tests
         [Fact]
         public void ImageResizerTransformResizingModeFill()
         {
-            var env = new MLContext();
+            var env = new MLContext(1);
             var dataFile = GetDataPath("images/fillmode.tsv");
             var imageFolder = Path.GetDirectoryName(dataFile);
             var data = TextLoader.Create(env, new TextLoader.Options()
@@ -856,7 +856,7 @@ namespace Microsoft.ML.Tests
             Done();
         }
 
-        private const int inputSize = 3 * 224 * 224;
+        private const int InputSize = 3 * 224 * 224;
 
         private static IEnumerable<DataPoint> GenerateRandomDataPoints(int count, int seed = 0)
         {
@@ -866,14 +866,14 @@ namespace Microsoft.ML.Tests
             {
                 yield return new DataPoint
                 {
-                    Features = Enumerable.Repeat(0, inputSize).Select(x => random.NextDouble()*100).ToArray()
+                    Features = Enumerable.Repeat(0, InputSize).Select(x => random.NextDouble()*100).ToArray()
                 };
             }
         }
 
         private class DataPoint
         {
-            [VectorType(inputSize)]
+            [VectorType(InputSize)]
             public double[] Features { get; set; }
         }
     }

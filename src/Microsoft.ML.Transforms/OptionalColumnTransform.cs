@@ -13,6 +13,7 @@ using Microsoft.ML.Data;
 using Microsoft.ML.Data.IO;
 using Microsoft.ML.EntryPoints;
 using Microsoft.ML.Internal.Utilities;
+using Microsoft.ML.Model.OnnxConverter;
 using Microsoft.ML.Runtime;
 using Microsoft.ML.Transforms;
 
@@ -29,7 +30,7 @@ namespace Microsoft.ML.Transforms
 {
     /// <include file='doc.xml' path='doc/members/member[@name="OptionalColumnTransform"]/*' />
     [BestFriend]
-    internal sealed class OptionalColumnTransform : RowToRowMapperTransformBase
+    internal sealed class OptionalColumnTransform : RowToRowMapperTransformBase, ITransformCanSaveOnnx
     {
         public sealed class Arguments : TransformInputBase
         {
@@ -496,6 +497,68 @@ namespace Microsoft.ML.Transforms
                 return (ValueGetter<VBuffer<T>>)((ref VBuffer<T> value) =>
                     VBufferUtils.Resize(ref value, length, 0));
             }
+        }
+
+        public void SaveAsOnnx(OnnxContext ctx)
+        {
+            Host.CheckValue(ctx, nameof(ctx));
+            Host.Assert(((ICanSaveOnnx)this).CanSaveOnnx(ctx));
+
+            for (int iinfo = 0; iinfo < _bindings.ColumnTypes.Length; ++iinfo)
+            {
+                var columnType = _bindings.ColumnTypes[iinfo];
+                string inputColumnName = Source.Schema[_bindings.SrcCols[iinfo]].Name;
+                if (!ctx.ContainsColumn(inputColumnName))
+                    continue;
+
+                // If there is already a column of this name, don't add this column as an OptionalColumn/Initializer
+                var srcVariableName = ctx.GetVariableName(inputColumnName);
+                if (srcVariableName != inputColumnName)
+                    continue;
+
+                if (!SaveAsOnnxCore(ctx, srcVariableName, _bindings.ColumnTypes[iinfo]))
+                    ctx.RemoveColumn(inputColumnName, true);
+            }
+        }
+
+        public bool CanSaveOnnx(OnnxContext ctx) => true;
+
+        private bool SaveAsOnnxCore(OnnxContext ctx, string srcVariableName, DataViewType columnType)
+        {
+            Type type = columnType.RawType;
+
+            int size;
+            if (columnType is VectorDataViewType && columnType.IsKnownSizeVector())
+                size = columnType.GetVectorSize();
+            else
+                size = 1;
+
+            if ((type == typeof(int)) ||
+                (type == typeof(short)) || (type == typeof(ushort)) ||
+                (type == typeof(sbyte)) || (type == typeof(byte)))
+                ctx.AddInitializer(new int[size], type, new long[] { 1, size }, srcVariableName, false);
+            else if (type == typeof(uint) || (type == typeof(ulong)))
+                ctx.AddInitializer(new ulong[size], type == typeof(ulong), new long[] { 1, size }, srcVariableName, false);
+            else if (type == typeof(bool))
+                ctx.AddInitializer(new bool[size], new long[] { 1, size }, srcVariableName, false);
+            else if (type == typeof(long))
+                ctx.AddInitializer(new long[size], new long[] { 1, size }, srcVariableName, false);
+            else if (type == typeof(float))
+                ctx.AddInitializer(new float[size], new long[] { 1, size }, srcVariableName, false);
+            else if (type == typeof(double))
+                ctx.AddInitializer(new double[size], new long[] { 1, size }, srcVariableName, false);
+            else if ((type == typeof(string)) || (columnType is TextDataViewType))
+            {
+                string[] values = new string[size];
+                for (int i = 0; i < size; i++)
+                    values[i] = "";
+
+                ctx.AddInitializer(values, new long[] { 1, size }, srcVariableName, false);
+            }
+            else
+                return false;
+
+            return true;
         }
 
         [TlcModule.EntryPoint(Desc = Summary,

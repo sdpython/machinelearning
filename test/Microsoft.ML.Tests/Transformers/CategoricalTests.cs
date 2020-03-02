@@ -8,7 +8,6 @@ using System.Linq;
 using Microsoft.ML.Data;
 using Microsoft.ML.Model;
 using Microsoft.ML.RunTests;
-using Microsoft.ML.StaticPipe;
 using Microsoft.ML.Tools;
 using Microsoft.ML.Transforms;
 using Xunit;
@@ -104,7 +103,7 @@ namespace Microsoft.ML.Tests.Transformers
                 new TestClassWithLabel() { A = 115, B = 2000, Label = false },
                 new TestClassWithLabel() { A = 115, B = 2000, Label = false }};
 
-            var mlContext = new MLContext();
+            var mlContext = new MLContext(1);
             var dataView = mlContext.Data.LoadFromEnumerable(data);
             var pipe = mlContext.Transforms.Conversion.ConvertType("A", outputKind: DataKind.Single)
                 .Append(mlContext.Transforms.Conversion.ConvertType("B", outputKind: DataKind.Single))
@@ -127,7 +126,7 @@ namespace Microsoft.ML.Tests.Transformers
             // In this case, whatever the value of the input, the term mapping should come from the optional side data if specified.
             var data = new[] { new TestStringClass() { A = "Stay" }, new TestStringClass() { A = "awhile and listen" } };
 
-            var mlContext = new MLContext();
+            var mlContext = new MLContext(1);
             var dataView = mlContext.Data.LoadFromEnumerable(data);
 
             var sideDataBuilder = new ArrayDataViewBuilder(mlContext);
@@ -151,29 +150,27 @@ namespace Microsoft.ML.Tests.Transformers
         }
 
         [Fact]
-        public void CategoricalStatic()
+        public void Categorical()
         {
             string dataPath = GetDataPath("breast-cancer.txt");
-            var reader = TextLoaderStatic.CreateLoader(ML, ctx => (
-                ScalarString: ctx.LoadText(1),
-                VectorString: ctx.LoadText(1, 4)));
-            var data = reader.Load(dataPath);
+            var data = ML.Data.LoadFromTextFile(dataPath, new[] {
+                new TextLoader.Column("ScalarString", DataKind.String, 1),
+                new TextLoader.Column("VectorString", DataKind.String, 1, 4)
+            });
             var wrongCollection = new[] { new TestClass() { A = 1, B = new int[2] { 2, 3 } }, new TestClass() { A = 4, B = new int[2] { 2, 4 } } };
 
             var invalidData = ML.Data.LoadFromEnumerable(wrongCollection);
-            var est = data.MakeNewEstimator().
-                  Append(row => (
-                  A: row.ScalarString.OneHotEncoding(outputKind: CategoricalStaticExtensions.OneHotScalarOutputKind.Ind),
-                  B: row.VectorString.OneHotEncoding(outputKind: CategoricalStaticExtensions.OneHotVectorOutputKind.Ind),
-                  C: row.VectorString.OneHotEncoding(outputKind: CategoricalStaticExtensions.OneHotVectorOutputKind.Bag),
-                  D: row.ScalarString.OneHotEncoding(outputKind: CategoricalStaticExtensions.OneHotScalarOutputKind.Bin),
-                  E: row.VectorString.OneHotEncoding(outputKind: CategoricalStaticExtensions.OneHotVectorOutputKind.Bin)
-                  ));
+            var est = ML.Transforms.Text.TokenizeIntoWords("VarVectorString", "ScalarString")
+                .Append(ML.Transforms.Categorical.OneHotEncoding("A", "ScalarString", outputKind: OneHotEncodingEstimator.OutputKind.Indicator))
+                .Append(ML.Transforms.Categorical.OneHotEncoding("B", "VectorString", outputKind: OneHotEncodingEstimator.OutputKind.Indicator))
+                .Append(ML.Transforms.Categorical.OneHotEncoding("C", "VectorString", outputKind: OneHotEncodingEstimator.OutputKind.Bag))
+                .Append(ML.Transforms.Categorical.OneHotEncoding("D", "ScalarString", outputKind: OneHotEncodingEstimator.OutputKind.Binary))
+                .Append(ML.Transforms.Categorical.OneHotEncoding("E", "VectorString", outputKind: OneHotEncodingEstimator.OutputKind.Binary));
 
-            TestEstimatorCore(est.AsDynamic, data.AsDynamic, invalidInput: invalidData);
+            TestEstimatorCore(est, data, invalidInput: invalidData);
 
             var outputPath = GetOutputPath("Categorical", "featurized.tsv");
-            var savedData = ML.Data.TakeRows(est.Fit(data).Transform(data).AsDynamic, 4);
+            var savedData = ML.Data.TakeRows(est.Fit(data).Transform(data), 4);
             var view = ML.Transforms.SelectColumns("A", "B", "C", "D", "E").Fit(savedData).Transform(savedData);
             using (var fs = File.Create(outputPath))
                 ML.Data.SaveAsText(view, fs, headerRow: true, keepHidden: true);

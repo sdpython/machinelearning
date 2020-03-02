@@ -56,6 +56,7 @@ namespace Microsoft.ML.Trainers
     /// | Is normalization required? | Yes |
     /// | Is caching required? | No |
     /// | Required NuGet in addition to Microsoft.ML | None |
+    /// | Exportable to ONNX | Yes |
     ///
     /// ### Scoring Function
     /// [Maximum entropy model](https://en.wikipedia.org/wiki/Multinomial_logistic_regression) is a generalization of linear [logistic regression](https://en.wikipedia.org/wiki/Logistic_regression).
@@ -88,7 +89,7 @@ namespace Microsoft.ML.Trainers
     public sealed class LbfgsMaximumEntropyMulticlassTrainer : LbfgsTrainerBase<LbfgsMaximumEntropyMulticlassTrainer.Options,
         MulticlassPredictionTransformer<MaximumEntropyModelParameters>, MaximumEntropyModelParameters>
     {
-        internal const string Summary = "Maximum entrypy classification is a method in statistics used to predict the probabilities of parallel events. The model predicts the probabilities of parallel events by fitting data to a softmax function.";
+        internal const string Summary = "Maximum entropy classification is a method in statistics used to predict the probabilities of parallel events. The model predicts the probabilities of parallel events by fitting data to a softmax function.";
         internal const string LoadNameValue = "MultiClassLogisticRegression";
         internal const string UserNameValue = "Multi-class Logistic Regression";
         internal const string ShortName = "mlr";
@@ -978,13 +979,40 @@ namespace Microsoft.ML.Trainers
         {
             Host.CheckValue(ctx, nameof(ctx));
 
+            string predictedLabelInt64 = null;
+            string predictedLabelUint32 = null;
+            // REVIEW: What is the right way to get the name of the predicted column?
+            for (int i = 0; i < outputs.Length; i++)
+            {
+                if (outputs[i] != DefaultColumnNames.PredictedLabel)
+                    continue;
+                predictedLabelUint32 = DefaultColumnNames.PredictedLabel;
+                predictedLabelInt64 = ctx.AddIntermediateVariable(NumberDataViewType.Int64, "PredictedLabelInt64", true);
+                outputs[i] = predictedLabelInt64;
+                break;
+            }
+
+            Host.CheckValue(predictedLabelInt64, nameof(predictedLabelInt64));
+
             string opType = "LinearClassifier";
             var node = ctx.CreateNode(opType, new[] { featureColumn }, outputs, ctx.GetNodeName(opType));
             node.AddAttribute("post_transform", GetOnnxPostTransform());
             node.AddAttribute("multi_class", true);
             node.AddAttribute("coefficients", Weights.SelectMany(w => w.DenseValues()));
             node.AddAttribute("intercepts", Biases);
-            node.AddAttribute("classlabels_ints", Enumerable.Range(0, NumberOfClasses).Select(x => (long)x));
+            node.AddAttribute("classlabels_ints", Enumerable.Range(1, NumberOfClasses).Select(x => (long)x));
+
+            // Onnx outputs an Int64, but ML.NET outputs UInt32. So cast the Onnx output here
+            opType = "Cast";
+            var castNodeOutput = ctx.AddIntermediateVariable(NumberDataViewType.UInt32, "CastNodeOutput", true);
+            var castNode = ctx.CreateNode(opType, predictedLabelInt64, castNodeOutput, ctx.GetNodeName(opType), "");
+            var t = InternalDataKindExtensions.ToInternalDataKind(DataKind.UInt32).ToType();
+            castNode.AddAttribute("to", t);
+
+            opType = "Unsqueeze";
+            var unsqueezeNode = ctx.CreateNode(opType, castNodeOutput, predictedLabelUint32, ctx.GetNodeName(opType), "");
+            unsqueezeNode.AddAttribute("axes", new long[] { 0 });
+
             return true;
         }
 
@@ -1003,7 +1031,7 @@ namespace Microsoft.ML.Trainers
         /// Copies the weight vector for each class into a set of buffers.
         /// </summary>
         /// <param name="weights">A possibly reusable set of vectors, which will
-        /// be expanded as necessary to accomodate the data.</param>
+        /// be expanded as necessary to accommodate the data.</param>
         /// <param name="numClasses">Set to the rank, which is also the logical length
         /// of <paramref name="weights"/>.</param>
         public void GetWeights(ref VBuffer<float>[] weights, out int numClasses)
@@ -1148,7 +1176,7 @@ namespace Microsoft.ML.Trainers
         {
         }
 
-        private static LinearMulticlassModelParameters Create(IHostEnvironment env, ModelLoadContext ctx)
+        internal static LinearMulticlassModelParameters Create(IHostEnvironment env, ModelLoadContext ctx)
         {
             Contracts.CheckValue(env, nameof(env));
             env.CheckValue(ctx, nameof(ctx));

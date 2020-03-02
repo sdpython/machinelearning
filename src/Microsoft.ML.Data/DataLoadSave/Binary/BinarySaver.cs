@@ -30,19 +30,19 @@ namespace Microsoft.ML.Data.IO
     {
         public sealed class Arguments
         {
-            [Argument(ArgumentType.LastOccurenceWins, HelpText = "The compression scheme to use for the blocks", ShortName = "comp")]
+            [Argument(ArgumentType.LastOccurrenceWins, HelpText = "The compression scheme to use for the blocks", ShortName = "comp")]
             public CompressionKind Compression = CompressionKind.Default;
 
-            [Argument(ArgumentType.LastOccurenceWins, HelpText = "The block-size heuristic will choose no more than this many rows to have per block, can be set to null to indicate that there is no inherent limit", ShortName = "rpb")]
+            [Argument(ArgumentType.LastOccurrenceWins, HelpText = "The block-size heuristic will choose no more than this many rows to have per block, can be set to null to indicate that there is no inherent limit", ShortName = "rpb")]
             public int? MaxRowsPerBlock = 1 << 13; // ~8 thousand.
 
-            [Argument(ArgumentType.LastOccurenceWins, HelpText = "The block-size heuristic will attempt to have about this many bytes across all columns per block, can be set to null to accept the inidcated max-rows-per-block as the number of rows per block", ShortName = "bpb")]
+            [Argument(ArgumentType.LastOccurrenceWins, HelpText = "The block-size heuristic will attempt to have about this many bytes across all columns per block, can be set to null to accept the indicated max-rows-per-block as the number of rows per block", ShortName = "bpb")]
             public long? MaxBytesPerBlock = 80 << 20; // ~80 megabytes.
 
-            [Argument(ArgumentType.LastOccurenceWins, HelpText = "If true, this forces a deterministic block order during writing", ShortName = "det")]
+            [Argument(ArgumentType.LastOccurrenceWins, HelpText = "If true, this forces a deterministic block order during writing", ShortName = "det")]
             public bool DeterministicBlockOrder = false; // REVIEW: Should this be true? Should we have multiple layout schemes?
 
-            [Argument(ArgumentType.LastOccurenceWins, HelpText = "Suppress any info output (not warnings or errors)", Hide = true)]
+            [Argument(ArgumentType.LastOccurrenceWins, HelpText = "Suppress any info output (not warnings or errors)", Hide = true)]
             public bool Silent;
         }
 
@@ -163,7 +163,7 @@ namespace Microsoft.ML.Data.IO
             public readonly int UncompressedLength;
             /// <summary>
             /// The column index, which is the index of the column as being written, which
-            /// may be less than the column from the source dataview if there were preceeding
+            /// may be less than the column from the source dataview if there were preceding
             /// columns being dropped.
             /// </summary>
             public readonly int ColumnIndex;
@@ -565,7 +565,7 @@ namespace Microsoft.ML.Data.IO
         }
 
         private void FetchWorker(BlockingCollection<Block> toCompress, IDataView data,
-            ColumnCodec[] activeColumns, int rowsPerBlock, Stopwatch sw, IChannel ch, IProgressChannel pch, ExceptionMarshaller exMarshaller)
+            ColumnCodec[] activeColumns, int rowsPerBlock, IChannel ch, IProgressChannel pch, ExceptionMarshaller exMarshaller)
         {
             Contracts.AssertValue(ch);
             Contracts.AssertValueOrNull(pch);
@@ -575,7 +575,6 @@ namespace Microsoft.ML.Data.IO
                 ch.AssertValue(toCompress);
                 ch.AssertValue(data);
                 ch.AssertValue(activeColumns);
-                ch.AssertValue(sw);
                 ch.Assert(rowsPerBlock > 0);
 
                 // The main thread handles fetching from the cursor, and storing it into blocks passed to toCompress.
@@ -684,7 +683,7 @@ namespace Microsoft.ML.Data.IO
                 // pattern of utilizing exMarshaller.
                 using (var pch = _silent ? null : _host.StartProgressChannel("BinarySaver"))
                 {
-                    FetchWorker(toCompress, data, activeColumns, rowsPerBlock, sw, ch, pch, exMarshaller);
+                    FetchWorker(toCompress, data, activeColumns, rowsPerBlock, ch, pch, exMarshaller);
                 }
 
                 _host.Assert(compressionTask != null || toCompress.IsCompleted);
@@ -697,7 +696,7 @@ namespace Microsoft.ML.Data.IO
                 if (!_silent)
                     ch.Info("Wrote {0} rows across {1} columns in {2}", _rowCount, activeColumns.Length, sw.Elapsed);
                 // When we dispose the exception marshaller, this will set the cancellation token when we internally
-                // dispose the cancellation token source, so one way or another those threads are being cancelled, even
+                // dispose the cancellation token source, so one way or another those threads are being canceled, even
                 // if an exception is thrown in the main body of this function.
             }
         }

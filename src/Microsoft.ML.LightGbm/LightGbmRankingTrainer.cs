@@ -67,7 +67,7 @@ namespace Microsoft.ML.Trainers.LightGbm
             ctx.SetVersionInfo(GetVersionInfo());
         }
 
-        private static LightGbmRankingModelParameters Create(IHostEnvironment env, ModelLoadContext ctx)
+        internal static LightGbmRankingModelParameters Create(IHostEnvironment env, ModelLoadContext ctx)
         {
             return new LightGbmRankingModelParameters(env, ctx);
         }
@@ -90,6 +90,7 @@ namespace Microsoft.ML.Trainers.LightGbm
     /// | Is normalization required? | No |
     /// | Is caching required? | No |
     /// | Required NuGet in addition to Microsoft.ML | Microsoft.ML.LightGbm |
+    /// | Exportable to ONNX | No |
     ///
     /// [!include[algorithm](~/../docs/samples/docs/api-reference/algo-details-lightgbm.md)]
     /// ]]>
@@ -143,7 +144,7 @@ namespace Microsoft.ML.Trainers.LightGbm
             [Argument(ArgumentType.AtMostOnce,
                 HelpText = "Evaluation metrics.",
                 ShortName = "em")]
-            public EvaluateMetricType EvaluationMetric = EvaluateMetricType.Default;
+            public EvaluateMetricType EvaluationMetric = EvaluateMetricType.NormalizedDiscountedCumulativeGain;
 
             static Options()
             {
@@ -222,7 +223,8 @@ namespace Microsoft.ML.Trainers.LightGbm
                     $"Label column '{labelCol.Name}' is of type '{labelType.RawType}', but must be Key or Single.");
             }
             // Check group types.
-            ch.CheckParam(data.Schema.Group.HasValue, nameof(data), "Need a group column.");
+            if(!data.Schema.Group.HasValue)
+                throw ch.ExceptValue(nameof(data.Schema.Group), "Group column is missing.") ;
             var groupCol = data.Schema.Group.Value;
             var groupType = groupCol.Type;
             if (!(groupType == NumberDataViewType.UInt32 || groupType is KeyDataViewType))

@@ -108,7 +108,7 @@ namespace Microsoft.ML.Data
 
             /// <summary>
             /// <see cref="InternalDataKind"/> of the items in the column. It defaults to float.
-            /// Although <see cref="InternalDataKind"/> is internal, <see cref="Type"/>'s information can be publically accessed by <see cref="DataKind"/>.
+            /// Although <see cref="InternalDataKind"/> is internal, <see cref="Type"/>'s information can be publicly accessed by <see cref="DataKind"/>.
             /// </summary>
             [Argument(ArgumentType.AtMostOnce, HelpText = "Type of the items in the column")]
             [BestFriend]
@@ -285,7 +285,7 @@ namespace Microsoft.ML.Data
             /// <param name="min">The minimum inclusive index of the column.</param>
             /// <param name="max">The maximum-inclusive index of the column. If <c>null</c>
             /// indicates that the <see cref="TextLoader"/> should auto-detect the legnth
-            /// of the lines, and read untill the end.</param>
+            /// of the lines, and read until the end.</param>
             public Range(int min, int? max)
             {
                 Contracts.CheckParam(min >= 0, nameof(min), "Must be non-negative");
@@ -308,7 +308,7 @@ namespace Microsoft.ML.Data
             /// <summary>
             /// The maximum index of the column, inclusive. If <see langword="null"/>
             /// indicates that the <see cref="TextLoader"/> should auto-detect the legnth
-            /// of the lines, and read untill the end.
+            /// of the lines, and read until the end.
             /// If max is specified, the fields <see cref="AutoEnd"/> and <see cref="VariableEnd"/> are ignored.
             /// </summary>
             [Argument(ArgumentType.AtMostOnce, HelpText = "Last index in the range")]
@@ -479,6 +479,10 @@ namespace Microsoft.ML.Data
 
             /// <summary>
             /// Whether the data file has a header with feature names.
+            /// Note: If a TextLoader is created with hasHeader = true but without a dataSample, then vector columns made by TextLoader will not contain slot name
+            /// annotations (slots being the elements of the given vector column), because the output schema is made when the TextLoader is made, and not when
+            /// TextLoader.Load(IMultiStreamSource source) is called. In addition, the case where dataSample = null and hasHeader = true indicates to the
+            /// loader that when it is given a file when <see cref="TextLoader.Load(IMultiStreamSource)"/> is called, it needs to skip the first line.
             /// </summary>
             [Argument(ArgumentType.AtMostOnce, ShortName = "header",
                 HelpText = "Data file has header with feature names. Header is read only if options 'hs' and 'hf' are not specified.")]

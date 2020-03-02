@@ -13,7 +13,7 @@ using Microsoft.ML;
 [assembly: InternalsVisibleTo(assemblyName: "Microsoft.ML.Predictor.Tests" + PublicKey.TestValue)]
 [assembly: InternalsVisibleTo(assemblyName: "Microsoft.ML.TimeSeries.Tests" + PublicKey.TestValue)]
 [assembly: InternalsVisibleTo(assemblyName: "Microsoft.ML.Benchmarks" + PublicKey.TestValue)]
-[assembly: InternalsVisibleTo(assemblyName: "Microsoft.ML.StaticPipelineTesting" + PublicKey.TestValue)]
+[assembly: InternalsVisibleTo(assemblyName: "Microsoft.ML.AutoML.Tests" + PublicKey.TestValue)]
 
 [assembly: InternalsVisibleTo(assemblyName: "Microsoft.ML.Benchmarks" + PublicKey.TestValue)]
 [assembly: InternalsVisibleTo(assemblyName: "Microsoft.ML.EntryPoints" + PublicKey.Value)]
@@ -37,16 +37,15 @@ using Microsoft.ML;
 [assembly: InternalsVisibleTo(assemblyName: "Microsoft.ML.StandardTrainers" + PublicKey.Value)]
 [assembly: InternalsVisibleTo(assemblyName: "Microsoft.ML.Sweeper" + PublicKey.Value)]
 [assembly: InternalsVisibleTo(assemblyName: "Microsoft.ML.TensorFlow" + PublicKey.Value)]
+[assembly: InternalsVisibleTo(assemblyName: "Microsoft.ML.Vision" + PublicKey.Value)]
 [assembly: InternalsVisibleTo(assemblyName: "Microsoft.ML.TimeSeries" + PublicKey.Value)]
 [assembly: InternalsVisibleTo(assemblyName: "Microsoft.ML.Transforms" + PublicKey.Value)]
 [assembly: InternalsVisibleTo(assemblyName: "Microsoft.ML.DnnImageFeaturizer.AlexNet" + PublicKey.Value)]
 [assembly: InternalsVisibleTo(assemblyName: "Microsoft.ML.DnnImageFeaturizer.ResNet101" + PublicKey.Value)]
 [assembly: InternalsVisibleTo(assemblyName: "Microsoft.ML.DnnImageFeaturizer.ResNet18" + PublicKey.Value)]
 [assembly: InternalsVisibleTo(assemblyName: "Microsoft.ML.DnnImageFeaturizer.ResNet50" + PublicKey.Value)]
-
-[assembly: InternalsVisibleTo(assemblyName: "Microsoft.ML.StaticPipe" + PublicKey.Value)]
 [assembly: InternalsVisibleTo(assemblyName: "Microsoft.ML.Experimental" + PublicKey.Value)]
-
+[assembly: InternalsVisibleTo(assemblyName: "Microsoft.ML.Featurizers" + PublicKey.Value)]
 [assembly: InternalsVisibleTo(assemblyName: "Microsoft.ML.Internal.MetaLinearLearner" + InternalPublicKey.Value)]
 [assembly: InternalsVisibleTo(assemblyName: "TMSNlearnPrediction" + InternalPublicKey.Value)]
 [assembly: InternalsVisibleTo(assemblyName: "Microsoft.ML.CntkWrapper" + InternalPublicKey.Value)]
@@ -86,5 +85,6 @@ using Microsoft.ML;
 [assembly: InternalsVisibleTo(assemblyName: "DotNetBridge" + InternalPublicKey.Value)]
 [assembly: InternalsVisibleTo(assemblyName: "NeuralNetworksTest" + InternalPublicKey.Value)]
 [assembly: InternalsVisibleTo(assemblyName: "RunTestsAzurePublish" + InternalPublicKey.Value)]
+[assembly: InternalsVisibleTo(assemblyName: "Microsoft.ML.AutoML" + PublicKey.Value)]
 
 [assembly: WantsToBeBestFriends]

@@ -72,7 +72,7 @@ namespace Microsoft.ML.Transforms
 
         /// <summary>
         /// Feature Contribution Calculation computes model-specific contribution scores for each feature.
-        /// Note that this functionality is not supported by all the models. See <see cref="FeatureContributionCalculatingTransformer"/> for a list of the suported models.
+        /// Note that this functionality is not supported by all the models. See <see cref="FeatureContributionCalculatingTransformer"/> for a list of the sported models.
         /// </summary>
         /// <param name="env">The environment to use.</param>
         /// <param name="modelParameters">Trained model parameters that support Feature Contribution Calculation and which will be used for scoring.</param>
@@ -148,7 +148,7 @@ namespace Microsoft.ML.Transforms
         }
 
         // Factory method for SignatureLoadModel.
-        private static FeatureContributionCalculatingTransformer Create(IHostEnvironment env, ModelLoadContext ctx)
+        internal static FeatureContributionCalculatingTransformer Create(IHostEnvironment env, ModelLoadContext ctx)
         {
             Contracts.CheckValue(env, nameof(env));
             ctx.CheckAtModel(GetVersionInfo());
@@ -238,6 +238,7 @@ namespace Microsoft.ML.Transforms
     /// | Does this estimator need to look at the data to train its parameters? | No |
     /// | Input column data type | Known-sized vector of <xref:System.Single> |
     /// | Output column data type | Known-sized vector of <xref:System.Single> |
+    /// | Exportable to ONNX | No |
     ///
     /// Scoring a dataset with a trained model produces a score, or prediction, for each example. To understand and explain these predictions
     /// it can be useful to inspect which features influenced them most significantly. This transformer computes a model-specific
@@ -304,7 +305,7 @@ namespace Microsoft.ML.Transforms
 
         /// <summary>
         /// Feature Contribution Calculation computes model-specific contribution scores for each feature.
-        /// Note that this functionality is not supported by all the models. See <see cref="FeatureContributionCalculatingTransformer"/> for a list of the suported models.
+        /// Note that this functionality is not supported by all the models. See <see cref="FeatureContributionCalculatingTransformer"/> for a list of the sported models.
         /// </summary>
         /// <param name="env">The environment to use.</param>
         /// <param name="model">A <see cref="ISingleFeaturePredictionTransformer{TModel}"/> that supports Feature Contribution Calculation,

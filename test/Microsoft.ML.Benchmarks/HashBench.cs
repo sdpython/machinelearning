@@ -71,7 +71,7 @@ namespace Microsoft.ML.Benchmarks
 
         private const int Count = 100_000;
 
-        private readonly IHostEnvironment _env = new MLContext();
+        private readonly IHostEnvironment _env = new MLContext(1);
 
         private RowImpl _inRow;
         private ValueGetter<uint> _getter;
@@ -83,7 +83,7 @@ namespace Microsoft.ML.Benchmarks
                 getter = (ref T dst) => dst = val;
             _inRow = RowImpl.Create(type, getter);
             // One million features is a nice, typical number.
-            var info = new HashingEstimator.ColumnOptions("Bar", "Foo", numberOfBits: numberOfBits);
+            var info = new HashingEstimator.ColumnOptionsInternal("Bar", "Foo", numberOfBits: numberOfBits);
             var xf = new HashingTransformer(_env, new[] { info });
             var mapper = ((ITransformer)xf).GetRowToRowMapper(_inRow.Schema);
             var column = mapper.OutputSchema["Bar"];

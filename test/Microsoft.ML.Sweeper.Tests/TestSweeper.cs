@@ -175,7 +175,7 @@ namespace Microsoft.ML.Sweeper.RunTests
         }
 
         [Fact]
-        public void TestDeterministicSweeperAsyncCancellation()
+        public async Task TestDeterministicSweeperAsyncCancellation()
         {
             var random = new Random(42);
             var env = new MLContext(42);
@@ -206,7 +206,7 @@ namespace Microsoft.ML.Sweeper.RunTests
                 if (i < args.BatchSize - args.Relaxation)
                 {
                     Assert.True(task.IsCompleted);
-                    sweeper.Update(task.Result.Id, new RunResult(task.Result.ParameterSet, random.NextDouble(), true));
+                    sweeper.Update(task.CompletedResult().Id, new RunResult(task.CompletedResult().ParameterSet, random.NextDouble(), true));
                     numCompleted++;
                 }
                 else
@@ -215,17 +215,17 @@ namespace Microsoft.ML.Sweeper.RunTests
             // Cancel after the first barrier and check if the number of registered actions
             // is indeed 2 * batchSize.
             sweeper.Cancel();
-            Task.WaitAll(tasks.ToArray());
+            await Task.WhenAll(tasks);
             foreach (var task in tasks)
             {
-                if (task.Result != null)
+                if (task.CompletedResult() != null)
                     numCompleted++;
             }
             Assert.Equal(args.BatchSize + args.BatchSize, numCompleted);
         }
 
         [Fact]
-        public void TestDeterministicSweeperAsync()
+        public async Task TestDeterministicSweeperAsync()
         {
             var random = new Random(42);
             var env = new MLContext(42);
@@ -254,9 +254,9 @@ namespace Microsoft.ML.Sweeper.RunTests
             {
                 var task = sweeper.Propose();
                 Assert.True(task.IsCompleted);
-                paramSets.Add(task.Result.ParameterSet);
-                var result = new RunResult(task.Result.ParameterSet, random.NextDouble(), true);
-                sweeper.Update(task.Result.Id, result);
+                paramSets.Add(task.CompletedResult().ParameterSet);
+                var result = new RunResult(task.CompletedResult().ParameterSet, random.NextDouble(), true);
+                sweeper.Update(task.CompletedResult().Id, result);
             }
             Assert.Equal(sweeps, paramSets.Count);
             CheckAsyncSweeperResult(paramSets);
@@ -273,9 +273,9 @@ namespace Microsoft.ML.Sweeper.RunTests
                 var task = sweeper.Propose();
                 Assert.True(task.IsCompleted);
                 tasks[i] = task;
-                if (task.Result == null)
+                if (task.CompletedResult() == null)
                     continue;
-                results.Add(new KeyValuePair<int, IRunResult>(task.Result.Id, new RunResult(task.Result.ParameterSet, 0.42, true)));
+                results.Add(new KeyValuePair<int, IRunResult>(task.CompletedResult().Id, new RunResult(task.CompletedResult().ParameterSet, 0.42, true)));
             }
             // Register consumers for the 2nd batch. Those consumers will await until at least one run
             // in the previous batch has been posted to the sweeper.
@@ -289,8 +289,7 @@ namespace Microsoft.ML.Sweeper.RunTests
             foreach (var run in results)
                 sweeper.Update(run.Key, run.Value);
 
-            Task.WaitAll(tasks);
-            tasks.All(t => t.IsCompleted);
+            await Task.WhenAll(tasks);
         }
 
         [Fact]
@@ -327,7 +326,7 @@ namespace Microsoft.ML.Sweeper.RunTests
             int[] sleeps = new int[sweeps];
             for (int i = 0; i < sleeps.Length; i++)
                 sleeps[i] = random.Next(10, 100);
-            var r = Parallel.For(0, sweeps, options, (int i) =>
+            var r = Task.Run(() => Parallel.For(0, sweeps, options, (int i) =>
             {
                 var task = sweeper.Propose();
                 task.Wait();
@@ -340,7 +339,7 @@ namespace Microsoft.ML.Sweeper.RunTests
                 sweeper.Update(paramWithId.Id, result);
                 lock (mlock)
                     paramSets.Add(paramWithId.ParameterSet);
-            });
+            }));
             Assert.True(paramSets.Count <= sweeps);
             CheckAsyncSweeperResult(paramSets);
         }

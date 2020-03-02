@@ -145,16 +145,16 @@ namespace Microsoft.ML
                 int permutationCount = 1) where TModel : class
         {
             return PermutationFeatureImportance<TModel, BinaryClassificationMetrics, BinaryClassificationMetricsStatistics>.GetImportanceMetricsMatrix(
-                            catalog.GetEnvironment(),
-                            predictionTransformer,
-                            data,
-                            () => new BinaryClassificationMetricsStatistics(),
-                            idv => catalog.Evaluate(idv, labelColumnName),
-                            BinaryClassifierDelta,
-                            predictionTransformer.FeatureColumnName,
-                            permutationCount,
-                            useFeatureWeightFilter,
-                            numberOfExamplesToUse);
+                catalog.GetEnvironment(),
+                predictionTransformer,
+                data,
+                () => new BinaryClassificationMetricsStatistics(),
+                idv => catalog.EvaluateNonCalibrated(idv, labelColumnName),
+                BinaryClassifierDelta,
+                predictionTransformer.FeatureColumnName,
+                permutationCount,
+                useFeatureWeightFilter,
+                numberOfExamplesToUse);
         }
 
         private static BinaryClassificationMetrics BinaryClassifierDelta(
@@ -206,7 +206,7 @@ namespace Microsoft.ML
         /// ]]>
         /// </format>
         /// </example>
-        /// <param name="catalog">The clustering catalog.</param>
+        /// <param name="catalog">The multiclass classification catalog.</param>
         /// <param name="predictionTransformer">The model on which to evaluate feature importance.</param>
         /// <param name="data">The evaluation data set.</param>
         /// <param name="labelColumnName">Label column name. The column data must be <see cref="KeyDataViewType"/>.</param>
@@ -291,7 +291,7 @@ namespace Microsoft.ML
         /// ]]>
         /// </format>
         /// </example>
-        /// <param name="catalog">The clustering catalog.</param>
+        /// <param name="catalog">The ranking catalog.</param>
         /// <param name="predictionTransformer">The model on which to evaluate feature importance.</param>
         /// <param name="data">The evaluation data set.</param>
         /// <param name="labelColumnName">Label column name. The column data must be <see cref="System.Single"/> or <see cref="KeyDataViewType"/>.</param>
