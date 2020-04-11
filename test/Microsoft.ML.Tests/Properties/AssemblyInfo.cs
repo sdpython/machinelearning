@@ -6,4 +6,3 @@ using Xunit;
 
 // TODO: [TEST_STABILITY] disable test parallelization for this assembly as running test in parallel sometimes cause test host process to crash
 [assembly: CollectionBehavior(DisableTestParallelization = true)]
-

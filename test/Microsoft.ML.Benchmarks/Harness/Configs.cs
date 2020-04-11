@@ -2,6 +2,7 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
+using System;
 using System.Collections.Generic;
 using BenchmarkDotNet.Configs;
 using BenchmarkDotNet.Jobs;
@@ -42,8 +43,10 @@ namespace Microsoft.ML.Benchmarks
             var tfm = "net461";
             var csProj = CsProjClassicNetToolchain.Net461;
 #else
-            var tfm = NetCoreAppSettings.Current.Value.TargetFrameworkMoniker;
-            var csProj = CsProjCoreToolchain.Current.Value;
+            var tfm = AppDomain.CurrentDomain.GetData("FX_PRODUCT_VERSION") == null ?
+                NetCoreAppSettings.NetCoreApp21.TargetFrameworkMoniker : NetCoreAppSettings.NetCoreApp31.TargetFrameworkMoniker;
+            var csProj = AppDomain.CurrentDomain.GetData("FX_PRODUCT_VERSION") == null ?
+                CsProjCoreToolchain.NetCoreApp21 : CsProjCoreToolchain.NetCoreApp31;
 #endif
             return new Toolchain(
                 tfm,
@@ -54,8 +57,8 @@ namespace Microsoft.ML.Benchmarks
 
         private static string GetBuildConfigurationName()
         {
-#if NETCOREAPP3_0
-            return "Release-netcoreapp3_0";
+#if NETCOREAPP3_1
+            return "Release-netcoreapp3_1";
 #elif NET461
             return "Release-netfx";
 #else

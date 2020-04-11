@@ -13,7 +13,7 @@ using BenchmarkDotNet.Running;
 
 namespace Microsoft.ML.Benchmarks
 {
-    public abstract class WithExtraMetrics
+    public abstract class WithExtraMetrics : BenchmarkBase
     {
         protected abstract IEnumerable<Metric> GetMetrics();
 
@@ -46,7 +46,7 @@ namespace Microsoft.ML.Benchmarks
         public string GetValue(Summary summary, BenchmarkCase benchmark) => GetValue(summary, benchmark, null);
         public override string ToString() => ColumnName;
 
-        public string GetValue(Summary summary, BenchmarkCase benchmark, ISummaryStyle style)
+        public string GetValue(Summary summary, BenchmarkCase benchmark, SummaryStyle style)
         {
             if (!summary.HasReport(benchmark))
                 return "-";

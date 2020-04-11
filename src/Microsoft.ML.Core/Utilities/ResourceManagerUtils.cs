@@ -88,6 +88,11 @@ namespace Microsoft.ML.Internal.Utilities
         /// Returns a <see cref="Task"/> that tries to download a resource from a specified url, and returns the path to which it was
         /// downloaded, and an exception if one was thrown.
         /// </summary>
+        /// <remarks>
+        /// The function <see cref="ResourceManagerUtils.DownloadResource"/> checks whether or not the absolute URL with the
+        /// default host "aka.ms" formed from <paramref name="relativeUrl"/> redirects to the default Microsoft homepage.
+        /// As such, only absolute URLs with the host "aka.ms" is supported with <see cref="ResourceManagerUtils.EnsureResourceAsync"/>.
+        /// </remarks>
         /// <param name="env">The host environment.</param>
         /// <param name="ch">A channel to provide information about the download.</param>
         /// <param name="relativeUrl">The relative url from which to download.
@@ -98,7 +103,7 @@ namespace Microsoft.ML.Internal.Utilities
         /// <param name="timeout">An integer indicating the number of milliseconds to wait before timing out while downloading a resource.</param>
         /// <returns>The download results, containing the file path where the resources was (or should have been) downloaded to, and an error message
         /// (or null if there was no error).</returns>
-        public async Task<ResourceDownloadResults> EnsureResource(IHostEnvironment env, IChannel ch, string relativeUrl, string fileName, string dir, int timeout)
+        public async Task<ResourceDownloadResults> EnsureResourceAsync(IHostEnvironment env, IChannel ch, string relativeUrl, string fileName, string dir, int timeout)
         {
             var filePath = GetFilePath(ch, fileName, dir, out var error);
             if (File.Exists(filePath) || !string.IsNullOrEmpty(error))
@@ -109,6 +114,8 @@ namespace Microsoft.ML.Internal.Utilities
                 return new ResourceDownloadResults(filePath,
                     $"Could not create a valid URI from the base URI '{MlNetResourcesUrl}' and the relative URI '{relativeUrl}'");
             }
+            if (absoluteUrl.Host != "aka.ms")
+                throw new NotSupportedException("The function ResourceManagerUtils.EnsureResourceAsync only supports downloading from URLs of the host \"aka.ms\"");
             return new ResourceDownloadResults(filePath,
                 await DownloadFromUrlWithRetryAsync(env, ch, absoluteUrl.AbsoluteUri, fileName, timeout, filePath), absoluteUrl.AbsoluteUri);
         }
@@ -120,21 +127,29 @@ namespace Microsoft.ML.Internal.Utilities
 
             for (int i = 0; i < retryTimes; ++i)
             {
-                var thisDownloadResult = await DownloadFromUrl(env, ch, url, fileName, timeout, filePath);
+                try
+                {
+                    var thisDownloadResult = await DownloadFromUrlAsync(env, ch, url, fileName, timeout, filePath);
 
-                if (string.IsNullOrEmpty(thisDownloadResult))
-                    return thisDownloadResult;
-                else
-                    downloadResult += thisDownloadResult + @"\n";
+                    if (string.IsNullOrEmpty(thisDownloadResult))
+                        return thisDownloadResult;
+                    else
+                        downloadResult += thisDownloadResult + @"\n";
 
-                await Task.Delay(10 * 1000);
+                    await Task.Delay(10 * 1000);
+                }
+                catch (Exception ex)
+                {
+                    // ignore any Exception and retrying download
+                    ch.Warning($"{i+1} - th try: Dowload {fileName} from {url} fail with exception {ex.Message}");
+                }
             }
 
             return downloadResult;
         }
 
         /// <returns>Returns the error message if an error occurred, null if download was successful.</returns>
-        private async Task<string> DownloadFromUrl(IHostEnvironment env, IChannel ch, string url, string fileName, int timeout, string filePath)
+        private async Task<string> DownloadFromUrlAsync(IHostEnvironment env, IChannel ch, string url, string fileName, int timeout, string filePath)
         {
             using (var webClient = new WebClient())
             using (var downloadCancel = new CancellationTokenSource())
@@ -160,27 +175,8 @@ namespace Microsoft.ML.Internal.Utilities
                     deleteNeeded = true;
                     return (await t).Message;
                 }
-
-                return CheckValidDownload(ch, filePath, url, ref deleteNeeded);
-            }
-        }
-
-        private static string CheckValidDownload(IChannel ch, string filePath, string url, ref bool deleteNeeded)
-        {
-            // If the relative url does not exist, aka.ms redirects to www.microsoft.com. Make sure this did not happen.
-            // If the file is big then it is definitely not the redirect.
-            var info = new FileInfo(filePath);
-            if (info.Length > 4096)
                 return null;
-            string error = null;
-            using (var r = new StreamReader(filePath))
-            {
-                var text = r.ReadToEnd();
-                if (text.Contains("<head>") && text.Contains("<body>") && text.Contains("microsoft.com"))
-                    error = $"The url '{url}' does not exist. Url was redirected to www.microsoft.com.";
             }
-            deleteNeeded = error != null;
-            return error;
         }
 
         private static void TryDelete(IChannel ch, string filePath, bool warn = true)
@@ -269,24 +265,37 @@ namespace Microsoft.ML.Internal.Utilities
             string tempPath = Path.GetFullPath(Path.Combine(Path.GetDirectoryName(path), "temp-resource-" + guid.ToString()));
             try
             {
+                int blockSize = 4096;
+
                 using (var s = webClient.OpenRead(uri))
                 using (var fh = env.CreateOutputFile(tempPath))
                 using (var ws = fh.CreateWriteStream())
                 {
                     var headers = webClient.ResponseHeaders.GetValues("Content-Length");
+                    if (uri.Host == "aka.ms" && IsRedirectToDefaultPage(uri.AbsoluteUri))
+                        throw new NotSupportedException($"The provided url ({uri}) redirects to the default url ({DefaultUrl})");
                     if (Utils.Size(headers) == 0 || !long.TryParse(headers[0], out var size))
                         size = 10000000;
 
                     long printFreq = (long)(size / 10.0);
-                    var buffer = new byte[4096];
+                    var buffer = new byte[blockSize];
                     long total = 0;
-                    int count;
+
                     // REVIEW: use a progress channel instead.
-                    while ((count = s.Read(buffer, 0, 4096)) > 0)
+                    while (true)
                     {
+                        var task = s.ReadAsync(buffer, 0, blockSize, ct);
+                        task.Wait();
+                        int count = task.Result;
+
+                        if(count <= 0)
+                        {
+                            break;
+                        }
+
                         ws.Write(buffer, 0, count);
                         total += count;
-                        if ((total - (total / printFreq) * printFreq) <= 4096)
+                        if ((total - (total / printFreq) * printFreq) <= blockSize)
                             ch.Info($"{fileName}: Downloaded {total} bytes out of {size}");
                         if (ct.IsCancellationRequested)
                         {
@@ -309,6 +318,36 @@ namespace Microsoft.ML.Internal.Utilities
                 TryDelete(ch, tempPath, warn: false);
                 mutex.ReleaseMutex();
             }
+        }
+
+        /// <summary>This method checks whether or not the provided aka.ms url redirects to
+        /// Microsoft's homepage, as the default faulty aka.ms URLs redirect to https://www.microsoft.com/?ref=aka .</summary>
+        /// <param name="url"> The provided url to check </param>
+        public bool IsRedirectToDefaultPage(string url)
+        {
+            try
+            {
+                var request = WebRequest.Create(url);
+                // FileWebRequests cannot be redirected to default aka.ms webpage
+                if (request.GetType() == typeof(FileWebRequest))
+                    return false;
+                HttpWebRequest httpWebRequest = (HttpWebRequest)request;
+                httpWebRequest.AllowAutoRedirect = false;
+                HttpWebResponse httpWebResponse = (HttpWebResponse)httpWebRequest.GetResponse();
+            }
+            catch (WebException e)
+            {
+                HttpWebResponse webResponse = (HttpWebResponse)e.Response;
+                // Redirects to default url
+                if (webResponse.StatusCode == HttpStatusCode.Redirect && webResponse.Headers["Location"] == "https://www.microsoft.com/?ref=aka")
+                    return true;
+                // Redirects to another url
+                else if (webResponse.StatusCode == HttpStatusCode.MovedPermanently)
+                    return false;
+                else
+                    return false;
+            }
+            return false;
         }
 
         public static ResourceDownloadResults GetErrorMessage(out string errorMessage, params ResourceDownloadResults[] result)

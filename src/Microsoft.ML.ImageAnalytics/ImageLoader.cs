@@ -103,14 +103,16 @@ namespace Microsoft.ML.Data
         internal ImageLoadingTransformer(IHostEnvironment env, string imageFolder = null, bool type = true, params (string outputColumnName, string inputColumnName)[] columns)
             : base(Contracts.CheckRef(env, nameof(env)).Register(nameof(ImageLoadingTransformer)), columns)
         {
-            // Throws ArgumentException  if given imageFolder path is invalid or empty. Note: imageFolder may be null in this case.
-            if (imageFolder != null)
+            // Throws ArgumentException if given imageFolder path is invalid. Note: imageFolder may be null or empty in this case.
+            if (String.IsNullOrEmpty(imageFolder))
+                ImageFolder = null;
+            else
+            {
                 if (Directory.Exists(imageFolder))
                     ImageFolder = Path.GetFullPath(imageFolder);
                 else
                     throw new ArgumentException(String.Format("Directory \"{0}\" does not exist.", imageFolder));
-            else
-                ImageFolder = null;
+            }
             _useImageType = type;
         }
 
@@ -235,7 +237,11 @@ namespace Microsoft.ML.Data
                             if (!string.IsNullOrWhiteSpace(_parent.ImageFolder))
                                 path = Path.Combine(_parent.ImageFolder, path);
 
-                            dst = new Bitmap(path) { Tag = path };
+                            // to avoid locking file, use the construct below to load bitmap
+                            var bytes = File.ReadAllBytes(path);
+                            var ms = new MemoryStream(bytes);
+                            dst = (Bitmap)Image.FromStream(ms);
+                            dst.Tag = path;
 
                             // Check for an incorrect pixel format which indicates the loading failed
                             if (dst.PixelFormat == System.Drawing.Imaging.PixelFormat.DontCare)
