@@ -246,14 +246,28 @@ namespace Microsoft.ML.Transforms
                 _parent = parent;
                 _infos = CreateInfos(inputSchema);
                 _types = new VectorDataViewType[_parent.ColumnPairs.Length];
-                for (int i = 0; i < _parent.ColumnPairs.Length; i++)
+
+                // The following try catch block is designed to provide user a better exception message
+                // by providing related column name when some exceptions occur in VectorDataViewType()(e.g overflow)
+                // This change is related with https://github.com/dotnet/machinelearning/issues/5211
+                try
                 {
-                    int valueCount = _infos[i].TypeSrc.GetValueCount();
-                    int keyCount = _infos[i].TypeSrc.GetItemType().GetKeyCountAsInt32(Host);
-                    if (_parent._columns[i].OutputCountVector || valueCount == 1)
-                        _types[i] = new VectorDataViewType(NumberDataViewType.Single, keyCount);
-                    else
-                        _types[i] = new VectorDataViewType(NumberDataViewType.Single, valueCount, keyCount);
+                    for (int i = 0; i < _parent.ColumnPairs.Length; i++)
+                    {
+                        int valueCount = _infos[i].TypeSrc.GetValueCount();
+                        int keyCount = _infos[i].TypeSrc.GetItemType().GetKeyCountAsInt32(Host);
+                        if (_parent._columns[i].OutputCountVector || valueCount == 1)
+                            _types[i] = new VectorDataViewType(NumberDataViewType.Single, keyCount);
+                        else
+                            _types[i] = new VectorDataViewType(NumberDataViewType.Single, valueCount, keyCount);
+                    }
+                }
+                catch (OverflowException e)
+                {
+                    var errorMsg = e.Message + " Related column: ";
+                    foreach (var info in _infos)
+                        errorMsg += info.Name + " ";
+                    throw Host.Except(errorMsg);
                 }
             }
 
@@ -689,27 +703,34 @@ namespace Microsoft.ML.Transforms
 
             private void SaveAsOnnxCore(OnnxContext ctx, int iinfo, ColInfo info, string srcVariableName, string dstVariableName)
             {
-                var shape = ctx.RetrieveShapeOrNull(srcVariableName);
-                // Make sure that shape must present for calculating the reduction axes. The shape here is generally not null
-                // because inputs and outputs of a transform are declared with shapes.
-                Contracts.CheckValue(shape, nameof(shape));
+                const int minimumOpSetVersion = 9;
+                ctx.CheckOpSetVersion(minimumOpSetVersion, LoaderSignature);
+
+                var dim = info.TypeSrc.GetValueCount();
 
                 string opType = "Cast";
-                var castOutput = ctx.AddIntermediateVariable(NumberDataViewType.Int64, opType);
+                var castOutput = ctx.AddIntermediateVariable(new VectorDataViewType(NumberDataViewType.Int64, dim), opType);
                 var castNode = ctx.CreateNode(opType, srcVariableName, castOutput, ctx.GetNodeName(opType), "");
                 castNode.AddAttribute("to", typeof(long));
 
                 opType = "OneHotEncoder";
+                var isOutputCountVector = _parent._columns[iinfo].OutputCountVector;
                 var categoryRange = info.TypeSrc.GetItemType().GetKeyCountAsInt32(Host);
-                var encodedVariableName = ctx.AddIntermediateVariable(new VectorDataViewType(NumberDataViewType.Single, 1, categoryRange), "encoded");
+                var typeShape = new VectorDataViewType(NumberDataViewType.Single, dim, categoryRange);
+
+                var encodedVariableName = (isOutputCountVector && info.TypeSrc is VectorDataViewType) ?
+                    ctx.AddIntermediateVariable(typeShape, "encoded") : dstVariableName;
                 var node = ctx.CreateNode(opType, castOutput, encodedVariableName, ctx.GetNodeName(opType));
                 node.AddAttribute("cats_int64s", Enumerable.Range(1, categoryRange).Select(x => (long)x));
                 node.AddAttribute("zeros", true);
 
-                // OneHotEncoder adds one additional dimension, so we remove it below
-                opType = "Squeeze";
-                var reduceNode = ctx.CreateNode(opType, encodedVariableName, dstVariableName, ctx.GetNodeName(opType), "");
-                reduceNode.AddAttribute("axes", new long[] { shape.Count - 1 });
+                if (_parent._columns[iinfo].OutputCountVector && info.TypeSrc is VectorDataViewType)
+                {
+                    opType = "ReduceSum";
+                    var reduceNode = ctx.CreateNode(opType, encodedVariableName, dstVariableName, ctx.GetNodeName(opType), "");
+                    reduceNode.AddAttribute("axes", new long[] { 1 });
+                    reduceNode.AddAttribute("keepdims", 0);
+                }
             }
         }
     }

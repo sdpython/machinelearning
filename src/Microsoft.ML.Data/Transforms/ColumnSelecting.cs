@@ -732,6 +732,9 @@ namespace Microsoft.ML.Transforms
 
             public void SaveAsOnnx(OnnxContext ctx)
             {
+                const int minimumOpSetVersion = 9;
+                ctx.CheckOpSetVersion(minimumOpSetVersion, LoaderSignature);
+
                 var outputToInputMap = _mapper.OutputToInputMap;
                 for(int i = 0; i < outputToInputMap.Length; i++)
                 {
@@ -741,7 +744,7 @@ namespace Microsoft.ML.Transforms
                         continue;
 
                     var srcVariable = ctx.GetVariableName(srcCol.Name);
-                    var dstVariable = ctx.AddIntermediateVariable(dstCol.Type, dstCol.Name, true);
+                    var dstVariable = ctx.AddIntermediateVariable(dstCol.Type, dstCol.Name);
                     string opType = "Identity";
                     ctx.CreateNode(opType, srcVariable, dstVariable, ctx.GetNodeName(opType), "");
                 }

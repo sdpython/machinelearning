@@ -159,7 +159,7 @@ namespace Microsoft.ML.Transforms
 
                         var outputDataSize = IntPtr.Zero;
                         NativeBinaryArchiveData* outputData = default;
-                        while(outputDataSize == IntPtr.Zero && SharedState.SourceCanMoveNext)
+                        while (outputDataSize == IntPtr.Zero && SharedState.SourceCanMoveNext)
                         {
                             BuildColumnByteArray(allColumns, allImputedColumnNames);
                             QueueDataForNonImputedColumns(allColumns, allImputedColumnNames);
@@ -251,7 +251,7 @@ namespace Microsoft.ML.Transforms
 
             private void BuildColumnByteArray(Dictionary<string, TypedColumn> allColumns, string[] columns)
             {
-                foreach(var column in columns.Where(x => x != IsRowImputedColumnName))
+                foreach (var column in columns.Where(x => x != IsRowImputedColumnName))
                 {
                     allColumns[column].SerializeValue(SharedState.BinWriter);
                 }
@@ -792,9 +792,11 @@ namespace Microsoft.ML.Transforms
             {
                 _ch.Check(IsColumnActive(column));
 
-                var fn = _allColumns[column.Name].GetGetter() as ValueGetter<TValue>;
+                var originFn = _allColumns[column.Name].GetGetter();
+                var fn = originFn as ValueGetter<TValue>;
                 if (fn == null)
-                    throw _ch.Except("Invalid TValue in GetGetter: '{0}'", typeof(TValue));
+                    throw _ch.Except($"Invalid TValue in GetGetter: '{typeof(TValue)}', " +
+                            $"expected type: '{originFn.GetType().GetGenericArguments().First()}'.");
                 return fn;
             }
 
