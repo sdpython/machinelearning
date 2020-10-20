@@ -4,6 +4,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.IO;
 using System.Linq;
 using Microsoft.ML.Data;
@@ -586,17 +587,20 @@ namespace Microsoft.ML.Tests
         {
             var ml = new MLContext(1);
             IDataView dataView;
+            List<TimeSeriesDataDouble> data;
+
             if (loadDataFromFile)
             {
                 var dataPath = GetDataPath("Timeseries", "anomaly_detection.csv");
 
                 // Load data from file into the dataView
                 dataView = ml.Data.LoadFromTextFile<TimeSeriesDataDouble>(dataPath, hasHeader: true);
+                data = ml.Data.CreateEnumerable<TimeSeriesDataDouble>(dataView, reuseRowObject: false).ToList();
             }
             else
             {
+                data = new List<TimeSeriesDataDouble>();
                 // Generate sample series data with an anomaly
-                var data = new List<TimeSeriesDataDouble>();
                 for (int index = 0; index < 20; index++)
                 {
                     data.Add(new TimeSeriesDataDouble { Value = 5 });
@@ -617,13 +621,14 @@ namespace Microsoft.ML.Tests
 
             // Do batch anomaly detection
             var outputDataView = ml.AnomalyDetection.DetectEntireAnomalyBySrCnn(dataView, outputColumnName, inputColumnName,
-                threshold: 0.35, batchSize: batchSize, sensitivity: 90.0, mode);
+                threshold: 0.35, batchSize: batchSize, sensitivity: 98.0, mode);
 
             // Getting the data of the newly created column as an IEnumerable of SrCnnAnomalyDetection.
             var predictionColumn = ml.Data.CreateEnumerable<SrCnnAnomalyDetection>(
                 outputDataView, reuseRowObject: false);
 
             int k = 0;
+            
             foreach (var prediction in predictionColumn)
             {
                 switch (mode)
@@ -654,9 +659,12 @@ namespace Microsoft.ML.Tests
                             Assert.Equal(5.00, prediction.Prediction[4], 2);
                             Assert.Equal(5.01, prediction.Prediction[5], 2);
                             Assert.Equal(4.99, prediction.Prediction[6], 2);
+                            Assert.True(prediction.Prediction[6] > data[k].Value || data[k].Value > prediction.Prediction[5]);
                         }
                         else
+                        {
                             Assert.Equal(0, prediction.Prediction[0]);
+                        }
                         break;
                 }
                 k += 1;
@@ -669,10 +677,13 @@ namespace Microsoft.ML.Tests
         {
             var ml = new MLContext(1);
             IDataView dataView;
+            List<TimeSeriesDataDouble> data;
+
             var dataPath = GetDataPath("Timeseries", "period_no_anomaly.csv");
 
             // Load data from file into the dataView
             dataView = ml.Data.LoadFromTextFile<TimeSeriesDataDouble>(dataPath, hasHeader: true);
+            data = ml.Data.CreateEnumerable<TimeSeriesDataDouble>(dataView, reuseRowObject: false).ToList();
 
             // Setup the detection arguments
             string outputColumnName = nameof(SrCnnAnomalyDetection.Prediction);
@@ -683,7 +694,7 @@ namespace Microsoft.ML.Tests
             {
                 Threshold = 0.3,
                 BatchSize = -1,
-                Sensitivity = 53.0,
+                Sensitivity = 64.0,
                 DetectMode = SrCnnDetectMode.AnomalyAndMargin,
                 Period = 288,
                 DeseasonalityMode = mode
@@ -695,10 +706,14 @@ namespace Microsoft.ML.Tests
             var predictionColumn = ml.Data.CreateEnumerable<SrCnnAnomalyDetection>(
                 outputDataView, reuseRowObject: false);
 
+            var index = 0;
             foreach (var prediction in predictionColumn)
             {
                 Assert.Equal(7, prediction.Prediction.Length);
                 Assert.Equal(0, prediction.Prediction[0]);
+                Assert.True(prediction.Prediction[6] <= data[index].Value);
+                Assert.True(data[index].Value <= prediction.Prediction[5]);
+                ++index;
             }
         }
 
@@ -709,10 +724,13 @@ namespace Microsoft.ML.Tests
         {
             var ml = new MLContext(1);
             IDataView dataView;
+            List<TimeSeriesDataDouble> data;
+
             var dataPath = GetDataPath("Timeseries", "period_anomaly.csv");
 
             // Load data from file into the dataView
             dataView = ml.Data.LoadFromTextFile<TimeSeriesDataDouble>(dataPath, hasHeader: true);
+            data = ml.Data.CreateEnumerable<TimeSeriesDataDouble>(dataView, reuseRowObject: false).ToList();
 
             // Setup the detection arguments
             string outputColumnName = nameof(SrCnnAnomalyDetection.Prediction);
@@ -723,7 +741,7 @@ namespace Microsoft.ML.Tests
             {
                 Threshold = 0.23,
                 BatchSize = -1,
-                Sensitivity = 53.0,
+                Sensitivity = 63.0,
                 DetectMode = SrCnnDetectMode.AnomalyAndMargin,
                 Period = 288,
                 DeseasonalityMode = mode
@@ -745,13 +763,78 @@ namespace Microsoft.ML.Tests
                 if (anomalyStartIndex <= k && k <= anomalyEndIndex)
                 {
                     Assert.Equal(1, prediction.Prediction[0]);
+                    Assert.True(prediction.Prediction[6] > data[k].Value || data[k].Value > prediction.Prediction[5]);
                 }
                 else
                 {
                     Assert.Equal(0, prediction.Prediction[0]);
+                    Assert.True(prediction.Prediction[6] <= data[k].Value);
+                    Assert.True(data[k].Value <= prediction.Prediction[5]);
                 }
 
                 ++k;
+            }
+        }
+
+        [Theory, CombinatorialData]
+        public void TestSrcnnEntireDetectNonnegativeData(
+            [CombinatorialValues(true, false)] bool isPositive)
+        {
+            var ml = new MLContext(1);
+            IDataView dataView;
+            List<TimeSeriesDataDouble> data;
+
+            // Load data from file into the dataView
+            var dataPath = GetDataPath("Timeseries", "non_negative_case.csv");
+
+            // Load data from file into the dataView
+            dataView = ml.Data.LoadFromTextFile<TimeSeriesDataDouble>(dataPath, hasHeader: true);
+            data = ml.Data.CreateEnumerable<TimeSeriesDataDouble>(dataView, reuseRowObject: false).ToList();
+
+            if (!isPositive)
+            {
+                for (int i = 0; i < data.Count; ++i)
+                {
+                    data[i].Value = - data[i].Value;
+                }
+            }
+
+            dataView = ml.Data.LoadFromEnumerable<TimeSeriesDataDouble>(data);
+
+            // Setup the detection arguments
+            string outputColumnName = nameof(SrCnnAnomalyDetection.Prediction);
+            string inputColumnName = nameof(TimeSeriesDataDouble.Value);
+
+            // Do batch anomaly detection
+            var options = new SrCnnEntireAnomalyDetectorOptions()
+            {
+                Threshold = 0.10,
+                BatchSize = -1,
+                Sensitivity = 99.0,
+                DetectMode = SrCnnDetectMode.AnomalyAndMargin,
+                Period = 0,
+                DeseasonalityMode = SrCnnDeseasonalityMode.Stl
+            };
+
+            var outputDataView = ml.AnomalyDetection.DetectEntireAnomalyBySrCnn(dataView, outputColumnName, inputColumnName, options);
+
+            // Getting the data of the newly created column as an IEnumerable of SrCnnAnomalyDetection.
+            var predictionColumn = ml.Data.CreateEnumerable<SrCnnAnomalyDetection>(
+                outputDataView, reuseRowObject: false);
+
+            if (isPositive)
+            {
+                foreach (var prediction in predictionColumn)
+                {
+                    Assert.True(prediction.Prediction[3] >= 0);
+                }
+            }
+            else
+            {
+                foreach (var prediction in predictionColumn)
+                {
+                    Assert.True(prediction.Prediction[3] <= 0);
+                }
             }
         }
 
