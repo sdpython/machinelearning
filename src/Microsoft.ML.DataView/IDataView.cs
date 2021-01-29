@@ -178,6 +178,20 @@ namespace Microsoft.ML
         protected virtual void Dispose(bool disposing)
         {
         }
+
+        /// <summary>
+        /// -1 or value > 1 tells ml.net that the cursor can be parallized
+        /// if needed. 1 means the cursor only holds one value and must
+        /// not be parallized.
+        /// </summary>
+        public virtual int Count() { return -1; }
+    }
+
+    /// <summary>
+    /// Prevents from using multithreading while creating cursors.
+    /// </summary>
+    public interface IDataViewSingleThreaded
+    {
     }
 
     /// <summary>

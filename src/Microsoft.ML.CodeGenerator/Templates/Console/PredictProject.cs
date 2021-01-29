@@ -27,7 +27,7 @@ namespace Microsoft.ML.CodeGenerator.Templates.Console
         public virtual string TransformText()
         {
             this.Write("<Project Sdk=\"Microsoft.NET.Sdk\">\r\n\r\n  <PropertyGroup>\r\n    <OutputType>Exe</Outp" +
-                    "utType>\r\n    <TargetFramework>netcoreapp2.1</TargetFramework>\r\n  </PropertyGroup" +
+                    "utType>\r\n    <TargetFramework>netcoreapp3.1</TargetFramework>\r\n  </PropertyGroup" +
                     ">\r\n  <ItemGroup>\r\n    <PackageReference Include=\"Microsoft.ML\" Version=\"");
             this.Write(this.ToStringHelper.ToStringWithCulture(StablePackageVersion));
             this.Write("\" />\r\n");
@@ -54,7 +54,11 @@ namespace Microsoft.ML.CodeGenerator.Templates.Console
  if (IncludeOnnxPackage){ 
             this.Write("    <PackageReference Include=\"Microsoft.ML.OnnxTransformer\" Version=\"");
             this.Write(this.ToStringHelper.ToStringWithCulture(StablePackageVersion));
+            this.Write("\" />\r\n    <PackageReference Include=\"Microsoft.ML.OnnxRuntime\" Version=\"");
+            this.Write(this.ToStringHelper.ToStringWithCulture(OnnxRuntimePackageVersion));
             this.Write("\" />\r\n");
+}
+ if (IncludeOnnxRuntime){ 
 }
  if (IncludeResNet18Package){ 
             this.Write("    <PackageReference Include=\"Microsoft.ML.DnnImageFeaturizer.ResNet18\" Version=" +
@@ -92,10 +96,12 @@ public bool IncludeFastTreePackage {get;set;}
 public bool IncludeImageTransformerPackage {get; set;}
 public bool IncludeImageClassificationPackage {get; set;}
 public bool IncludeOnnxPackage {get; set;}
+public bool IncludeOnnxRuntime {get; set;}
 public bool IncludeResNet18Package {get; set;}
 public bool IncludeRecommenderPackage {get;set;}
 public string StablePackageVersion {get;set;}
 public string UnstablePackageVersion {get;set;}
+public string OnnxRuntimePackageVersion {get;set;}
 internal CSharp.GenerateTarget Target {get;set;}
 
     }

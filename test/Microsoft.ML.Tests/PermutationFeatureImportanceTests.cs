@@ -9,6 +9,7 @@ using Microsoft.ML.Calibrators;
 using Microsoft.ML.Data;
 using Microsoft.ML.Internal.Utilities;
 using Microsoft.ML.RunTests;
+using Microsoft.ML.TestFrameworkCommon;
 using Microsoft.ML.Trainers;
 using Microsoft.ML.Trainers.FastTree;
 using Xunit;
@@ -309,7 +310,7 @@ namespace Microsoft.ML.Tests
         [Fact]
         public void TestBinaryClassificationWithoutCalibrator()
         {
-            var dataPath = GetDataPath("breast-cancer.txt");
+            var dataPath = GetDataPath(TestDatasets.breastCancer.trainFilename);
             var ff = ML.BinaryClassification.Trainers.FastForest();
             var data = ML.Data.LoadFromTextFile(dataPath,
                             new[] { new TextLoader.Column("Label", DataKind.Boolean, 0),
@@ -468,6 +469,10 @@ namespace Microsoft.ML.Tests
 
                 var loadedModel = ML.Model.Load(modelAndSchemaPath, out var schema);
                 var castedModel = loadedModel as RankingPredictionTransformer<FastTreeRankingModelParameters>;
+
+                // Saving and Loading the model cause the internal random state to change, so we reset the seed
+                // here so help the tests pass.
+                ML = new MLContext(0);
                 pfi = ML.Ranking.PermutationFeatureImportance(castedModel, data);
             }
             else

@@ -868,7 +868,7 @@ namespace Microsoft.ML.RunTests
             Done();
         }
 
-        [X64Fact("x86 output differs from Baseline")]
+        [Fact]
         public void CommandCrossValidationKeyLabelWithFloatKeyValues()
         {
             RunMTAThread(() =>
@@ -880,6 +880,16 @@ namespace Microsoft.ML.RunTests
                 string loaderArgs = "loader=text{col=Features:R4:10-14 col=Label:R4:9 col=GroupId:TX:1 header+}";
                 TestCore("cv", pathData, loaderArgs, extraArgs);
             });
+            Done();
+        }
+
+        [Fact]
+        public void CommandCrossValidationWithTextStratificationColumn()
+        {
+            string pathData = GetDataPath(@"adult.tiny.with-schema.txt");
+            string extraArgs = $"tr=lr{{{TestLearnersBase.logisticRegression.Trainer.SubComponentSettings}}} strat=Strat threads- norm=Warn";
+            string loaderArgs = "loader=text{col=Features:R4:9-14 col=Label:R4:0 col=Strat:TX:1 header+}";
+            TestCore("cv", pathData, loaderArgs, extraArgs, 5);
             Done();
         }
 
@@ -1200,7 +1210,7 @@ namespace Microsoft.ML.RunTests
             Done();
         }
 
-        [LessThanNetCore30OrNotNetCoreFact("netcoreapp3.1 output differs from Baseline")]
+        [Fact]
         [TestCategory(Cat), TestCategory("Multiclass"), TestCategory("Logistic Regression")]
         public void CommandTrainMlrWithStats()
         {
@@ -1376,7 +1386,7 @@ namespace Microsoft.ML.RunTests
         [Fact(Skip = "Need CoreTLC specific baseline update")]
         public void CommandDefaultLearners()
         {
-            string pathData = GetDataPath("breast-cancer.txt");
+            string pathData = GetDataPath(TestDatasets.breastCancer.trainFilename);
             TestCore("train", pathData, "", "seed=1 norm=Warn");
 
             _step++;
@@ -1517,7 +1527,7 @@ namespace Microsoft.ML.RunTests
         public void CommandTrainScoreEvaluateUncalibratedBinary()
         {
             // First run a training.
-            string pathData = GetDataPath("breast-cancer.txt");
+            string pathData = GetDataPath(TestDatasets.breastCancer.trainFilename);
             OutputPath trainModel = ModelPath();
             TestCore("train", pathData, "loader=TextLoader xf[norm]=MinMax{col=Features}", "tr=ap{shuf=-} cali={}");
 
@@ -1760,7 +1770,7 @@ namespace Microsoft.ML.RunTests
             Done();
         }
 
-        [TestCategory(Cat), TestCategory("Dracula")]
+        [TestCategory(Cat), TestCategory("CountTargetEncoding")]
         [Fact(Skip = "Need CoreTLC specific baseline update")]
         public void CommandDraculaInfer()
         {
@@ -1973,7 +1983,7 @@ namespace Microsoft.ML.RunTests
         {
             const string loaderArgs = "loader=text{col=Label:0 col=Features:1-*}";
             const string extraArgs = "xf=minmax{col=Features} tr=ffm{d=7 shuf- iters=3 norm-}";
-            string data = GetDataPath("breast-cancer.txt");
+            string data = GetDataPath(TestDatasets.breastCancer.trainFilename);
             OutputPath model = ModelPath();
 
             TestCore("traintest", data, loaderArgs, extraArgs + " test=" + data);
@@ -1989,7 +1999,7 @@ namespace Microsoft.ML.RunTests
         {
             const string loaderArgs = "loader=text{col=Label:0 col=FieldA:1-2 col=FieldB:3-4 col=FieldC:5-6 col=FieldD:7-9}";
             const string extraArgs = "tr=ffm{d=7 shuf- iters=3} col[Feature]=FieldA col[Feature]=FieldB col[Feature]=FieldC col[Feature]=FieldD";
-            string data = GetDataPath("breast-cancer.txt");
+            string data = GetDataPath(TestDatasets.breastCancer.trainFilename);
             OutputPath model = ModelPath();
 
             TestCore("traintest", data, loaderArgs, extraArgs + " test=" + data, digitsOfPrecision: 5);
@@ -2058,7 +2068,7 @@ namespace Microsoft.ML.RunTests
         {
             const string loaderArgs = "loader=text{col=Label:0 col=Features:1-*}";
             const string extraArgs = "xf=minmax{col=Features} tr=ffm{d=5 shuf- iters=2 norm-}";
-            string data = GetDataPath("breast-cancer.txt");
+            string data = GetDataPath(TestDatasets.breastCancer.trainFilename);
             OutputPath model = ModelPath();
 
             TestCore("traintest", data, loaderArgs, extraArgs + " test=" + data);
@@ -2088,7 +2098,7 @@ namespace Microsoft.ML.RunTests
         {
             const string loaderArgs = "loader=text{col=Label:0 col=FieldA:1-2 col=FieldB:3-4 col=FieldC:5-6 col=FieldD:7-9}";
             const string extraArgs = "tr=ffm{d=5 shuf- iters=2} col[Feature]=FieldA col[Feature]=FieldB col[Feature]=FieldC col[Feature]=FieldD";
-            string data = GetDataPath("breast-cancer.txt");
+            string data = GetDataPath(TestDatasets.breastCancer.trainFilename);
             OutputPath model = ModelPath();
 
             TestCore("traintest", data, loaderArgs, extraArgs + " test=" + data);
@@ -2132,6 +2142,43 @@ namespace Microsoft.ML.RunTests
 
             OutputPath modelPath = ModelPath();
             string extraArgs = "xf=ChooseColumnsByIndex{ind=3 ind=0}";
+            TestCore("showdata", dataPath, loaderArgs, extraArgs);
+
+            _step++;
+
+            TestCore("showdata", dataPath, string.Format("in={{{0}}}", modelPath.Path), "");
+            Done();
+        }
+
+        [TestCategory("DataPipeSerialization")]
+        [Fact()]
+        public void SavePipeTextLoaderWithMultilines()
+        {
+            string dataPath = GetDataPath("multiline-escapechar.csv");
+            const string loaderArgs = "loader=text{sep=, quote+ multilines+ header+ escapechar=\\ col=id:Num:0 col=description:TX:1 col=animal:TX:2}";
+
+            OutputPath modelPath = ModelPath();
+            string extraArgs = null;
+            TestCore("showdata", dataPath, loaderArgs, extraArgs);
+
+            _step++;
+
+            TestCore("showdata", dataPath, string.Format("in={{{0}}}", modelPath.Path), "");
+            Done();
+        }
+
+        [TestCategory("DataPipeSerialization")]
+        [Fact()]
+        public void SavePipeTextLoaderWithMissingRealsAsNaNs()
+        {
+            string dataPath = GetDataPath("missing_fields.csv");
+            const string loaderArgs = "loader=text{sep=, quote+ multilines+ header+ escapechar=\\ missingrealnan+ " +
+                "col=id:Num:0 col=description:TX:1 col=date:DT:4 " +
+                "col=sing1:R4:2 col=sing2:R4:3 col=singFt1:R4:2-3 " +
+                "col=doubFt:R8:2-3,5-6}";
+
+            OutputPath modelPath = ModelPath();
+            string extraArgs = null;
             TestCore("showdata", dataPath, loaderArgs, extraArgs);
 
             _step++;

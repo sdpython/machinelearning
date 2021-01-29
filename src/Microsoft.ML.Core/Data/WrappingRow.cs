@@ -61,5 +61,7 @@ namespace Microsoft.ML.Data
         protected virtual void DisposeCore(bool disposing)
         {
         }
+
+        public override int Count() { return Input.Count(); }
     }
 }

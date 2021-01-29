@@ -76,13 +76,24 @@ namespace Microsoft.ML.Data
             // instead of before. This is likely to produce better performance, for example, when
             // this is RangeFilter.
             DataViewRowCursor curs;
-            if (useParallel != false &&
+            if (useParallel != false && !SingleThread() &&
                 DataViewUtils.TryCreateConsolidatingCursor(out curs, this, columnsNeeded, Host, rng))
             {
                 return curs;
             }
 
             return GetRowCursorCore(columnsNeeded, rng);
+        }
+
+        public virtual bool SingleThread()
+        {
+            var tf = Source as TransformBase;
+            if (tf != null)
+                return tf.SingleThread();
+            var tf2 = Source as IDataTransformPropagateSingleThread;
+            if (tf2 != null)
+                return tf2.SingleThread();
+            return (Source as IDataViewSingleThreaded) != null;
         }
 
         /// <summary>
@@ -229,10 +240,12 @@ namespace Microsoft.ML.Data
                 if (isSrc)
                     return Input.GetGetter<TValue>(Input.Schema[index]);
 
-                Contracts.Assert(_getters[index] != null);
-                var fn = _getters[index] as ValueGetter<TValue>;
+                var originFn = _getters[index];
+                Contracts.Assert(originFn != null);
+                var fn = originFn as ValueGetter<TValue>;
                 if (fn == null)
-                    throw Contracts.Except("Invalid TValue in GetGetter: '{0}'", typeof(TValue));
+                    throw Contracts.Except($"Invalid TValue in GetGetter: '{typeof(TValue)}', " +
+                            $"expected type: '{originFn.GetType().GetGenericArguments().First()}'.");
                 return fn;
             }
 
@@ -751,7 +764,8 @@ namespace Microsoft.ML.Data
             var inputs = Source.GetRowCursorSet(inputCols, n, rand);
             Host.AssertNonEmpty(inputs);
 
-            if (inputs.Length == 1 && n > 1 && WantParallelCursors(predicate))
+            if (inputs.Length == 1 && n > 1 && WantParallelCursors(predicate) &&
+                inputs[0].Count() != 1 && !SingleThread())  // to skip multithreading
                 inputs = DataViewUtils.CreateSplitCursors(Host, inputs[0], n);
             Host.AssertNonEmpty(inputs);
 
@@ -901,10 +915,12 @@ namespace Microsoft.ML.Data
                 if (isSrc)
                     return Input.GetGetter<TValue>(Input.Schema[index]);
 
-                Ch.Assert(_getters[index] != null);
-                var fn = _getters[index] as ValueGetter<TValue>;
+                var originFn = _getters[index];
+                Ch.Assert(originFn != null);
+                var fn = originFn as ValueGetter<TValue>;
                 if (fn == null)
-                    throw Ch.Except("Invalid TValue in GetGetter: '{0}'", typeof(TValue));
+                    throw Ch.Except($"Invalid TValue in GetGetter: '{typeof(TValue)}', " +
+                            $"expected type: '{originFn.GetType().GetGenericArguments().First()}'.");
                 return fn;
             }
 

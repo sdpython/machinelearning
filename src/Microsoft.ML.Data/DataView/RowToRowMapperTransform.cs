@@ -204,7 +204,8 @@ namespace Microsoft.ML.Data
             var inputs = Source.GetRowCursorSet(inputCols, n, rand);
             Host.AssertNonEmpty(inputs);
 
-            if (inputs.Length == 1 && n > 1 && _bindings.AddedColumnIndices.Any(predicate))
+            if (inputs.Length == 1 && n > 1 && _bindings.AddedColumnIndices.Any(predicate) &&
+                inputs[0].Count() != 1 && !SingleThread())  // to skip multithreading
                 inputs = DataViewUtils.CreateSplitCursors(Host, inputs[0], n);
             Host.AssertNonEmpty(inputs);
 
@@ -333,10 +334,12 @@ namespace Microsoft.ML.Data
                 if (isSrc)
                     return Input.GetGetter<TValue>(Input.Schema[index]);
 
-                Contracts.Assert(_getters[index] != null);
-                var fn = _getters[index] as ValueGetter<TValue>;
+                var originFn = _getters[index];
+                Contracts.Assert(originFn != null);
+                var fn = originFn as ValueGetter<TValue>;
                 if (fn == null)
-                    throw Contracts.Except("Invalid TValue in GetGetter: '{0}'", typeof(TValue));
+                    throw Contracts.Except($"Invalid TValue in GetGetter: '{typeof(TValue)}', " +
+                        $"expected type: '{originFn.GetType().GetGenericArguments().First()}'.");
                 return fn;
             }
 
@@ -402,7 +405,8 @@ namespace Microsoft.ML.Data
                 Ch.Assert(getter != null);
                 var fn = getter as ValueGetter<TValue>;
                 if (fn == null)
-                    throw Ch.Except("Invalid TValue in GetGetter: '{0}'", typeof(TValue));
+                    throw Contracts.Except($"Invalid TValue in GetGetter: '{typeof(TValue)}', " +
+                        $"expected type: '{getter.GetType().GetGenericArguments().First()}'.");
                 return fn;
             }
 

@@ -152,7 +152,8 @@ namespace Microsoft.ML.Data
             var inputs = Source.GetRowCursorSet(inputCols, n, rand);
             Contracts.AssertNonEmpty(inputs);
 
-            if (inputs.Length == 1 && n > 1 && WantParallelCursors(predicate) && (Source.GetRowCount() ?? int.MaxValue) > n)
+            if (inputs.Length == 1 && n > 1 && WantParallelCursors(predicate) && (Source.GetRowCount() ?? int.MaxValue) > n &&
+                inputs[0].Count() != 1 && !SingleThread())  // to skip multithreading
                 inputs = DataViewUtils.CreateSplitCursors(Host, inputs[0], n);
             Contracts.AssertNonEmpty(inputs);
 
@@ -300,7 +301,8 @@ namespace Microsoft.ML.Data
                 Ch.Assert(getter != null);
                 var fn = getter as ValueGetter<TValue>;
                 if (fn == null)
-                    throw Ch.Except("Invalid TValue in GetGetter: '{0}'", typeof(TValue));
+                    throw Ch.Except($"Invalid TValue in GetGetter: '{typeof(TValue)}', " +
+                            $"expected type: '{getter.GetType().GetGenericArguments().First()}'.");
                 return fn;
             }
         }

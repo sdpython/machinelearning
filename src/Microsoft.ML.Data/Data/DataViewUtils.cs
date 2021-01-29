@@ -332,6 +332,8 @@ namespace Microsoft.ML.Data
                 ch.CheckNonEmpty(inputs, nameof(inputs));
                 if (inputs.Length == 1)
                     return inputs[0];
+                if (inputs.Length > 1 && inputs[0].Count() == 1)
+                    throw Contracts.Except("Single thread cursor requested but multiple cursors were produced.");
                 ch.CheckParam(SameSchemaAndActivity(inputs), nameof(inputs), "Inputs not compatible for consolidation");
 
                 DataViewRowCursor cursor = inputs[0];
@@ -942,8 +944,10 @@ namespace Microsoft.ML.Data
                     public override void Unset()
                     {
                         Contracts.Assert(_index <= _count);
-                        if (Values != null)
-                            _pool.Return(Values);
+                        // Remove all the objects from the pool
+                        // to free up references to those objects
+                        while (_pool.Count > 0)
+                            _pool.Get();
                         Values = null;
                         _count = 0;
                         _index = 0;
@@ -1123,9 +1127,11 @@ namespace Microsoft.ML.Data
                     Ch.CheckParam(IsColumnActive(column), nameof(column), "requested column not active.");
                     Ch.CheckParam(column.Index < _colToActive.Length, nameof(column), "requested column is not active or valid for the Schema.");
 
-                    var getter = _getters[_colToActive[column.Index]] as ValueGetter<TValue>;
+                    var originGetter = _getters[_colToActive[column.Index]];
+                    var getter = originGetter as ValueGetter<TValue>;
                     if (getter == null)
-                        throw Ch.Except("Invalid TValue: '{0}'", typeof(TValue));
+                        throw Ch.Except($"Invalid TValue: '{typeof(TValue)}', " +
+                            $"expected type: '{originGetter.GetType().GetGenericArguments().First()}'.");
                     return getter;
                 }
             }
@@ -1312,9 +1318,11 @@ namespace Microsoft.ML.Data
                 Ch.CheckParam(IsColumnActive(column), nameof(column), "requested column not active");
                 Ch.CheckParam(column.Index < _colToActive.Length, nameof(column), "requested column not active or is invalid for the schema. ");
 
-                var getter = _getters[_colToActive[column.Index]] as ValueGetter<TValue>;
+                var originGetter = _getters[_colToActive[column.Index]];
+                var getter = originGetter as ValueGetter<TValue>;
                 if (getter == null)
-                    throw Ch.Except("Invalid TValue: '{0}'", typeof(TValue));
+                    throw Ch.Except($"Invalid TValue: '{typeof(TValue)}', " +
+                        $"expected type: '{originGetter.GetType().GetGenericArguments().First()}'.");
                 return getter;
             }
         }
@@ -1352,7 +1360,7 @@ namespace Microsoft.ML.Data
             var floatGetter = cursor.GetGetter<T>(cursor.Schema[i]);
             T v = default(T);
             ValueMapper<T, StringBuilder> conversion;
-            if (!Conversions.Instance.TryGetStringConversion<T>(colType, out conversion))
+            if (!Conversions.DefaultInstance.TryGetStringConversion<T>(colType, out conversion))
             {
                 var error = $"Cannot display {colType}";
                 conversion = (in T src, ref StringBuilder builder) =>
@@ -1383,7 +1391,7 @@ namespace Microsoft.ML.Data
             var vbuf = default(VBuffer<T>);
             const int previewValues = 100;
             ValueMapper<T, StringBuilder> conversion;
-            Conversions.Instance.TryGetStringConversion<T>(colType, out conversion);
+            Conversions.DefaultInstance.TryGetStringConversion<T>(colType, out conversion);
             StringBuilder dst = null;
             ValueGetter<ReadOnlyMemory<char>> getter =
                 (ref ReadOnlyMemory<char> value) =>

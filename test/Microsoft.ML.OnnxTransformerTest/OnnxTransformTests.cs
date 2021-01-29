@@ -23,6 +23,11 @@ namespace Microsoft.ML.Tests
 {
     public class OnnxTransformTests : TestDataPipeBase
     {
+        // These two members are meant to be changed
+        // Only when manually testing the Onnx GPU nuggets
+        private const bool _fallbackToCpu = true;
+        private static int? _gpuDeviceId = null;
+
         private const int InputSize = 150528;
 
         private class TestData
@@ -65,6 +70,17 @@ namespace Microsoft.ML.Tests
         {
             [VectorType(InputSize)]
             public string[] data_0;
+        }
+        private class TestDataNoneDimension
+        {
+            [VectorType(4)]
+            public float[] features;
+        }
+
+        class PredictionNoneDimension
+        {
+            [VectorType(1)]
+            public float[] variable { get; set; }
         }
 
         private class TestDataUnknownDimensions
@@ -123,7 +139,7 @@ namespace Microsoft.ML.Tests
             var xyData = new List<TestDataXY> { new TestDataXY() { A = new float[InputSize] } };
             var stringData = new List<TestDataDifferntType> { new TestDataDifferntType() { data_0 = new string[InputSize] } };
             var sizeData = new List<TestDataSize> { new TestDataSize() { data_0 = new float[2] } };
-            var pipe = ML.Transforms.ApplyOnnxModel(new[] { "softmaxout_1" }, new[] { "data_0" }, modelFile);
+            var pipe = ML.Transforms.ApplyOnnxModel(new[] { "softmaxout_1" }, new[] { "data_0" }, modelFile, gpuDeviceId: _gpuDeviceId, fallbackToCpu: _fallbackToCpu);
 
             var invalidDataWrongNames = ML.Data.LoadFromEnumerable(xyData);
             var invalidDataWrongTypes = ML.Data.LoadFromEnumerable(stringData);
@@ -134,7 +150,9 @@ namespace Microsoft.ML.Tests
             pipe.GetOutputSchema(SchemaShape.Create(invalidDataWrongVectorSize.Schema));
             try
             {
-                pipe.Fit(invalidDataWrongVectorSize);
+                var onnxTransformer = pipe.Fit(invalidDataWrongVectorSize);
+                (onnxTransformer as IDisposable)?.Dispose();
+
                 Assert.False(true);
             }
             catch (ArgumentOutOfRangeException) { }
@@ -195,6 +213,7 @@ namespace Microsoft.ML.Tests
                     }
                     Assert.InRange(sum, 0.99999, 1.00001);
                 }
+                (transformer as IDisposable)?.Dispose();
             }
         }
 
@@ -217,11 +236,19 @@ namespace Microsoft.ML.Tests
             var pipe = ML.Transforms.LoadImages("data_0", imageFolder, "imagePath")
                 .Append(ML.Transforms.ResizeImages("data_0", imageHeight, imageWidth))
                 .Append(ML.Transforms.ExtractPixels("data_0", interleavePixelColors: true))
-                .Append(ML.Transforms.ApplyOnnxModel("softmaxout_1", "data_0", modelFile));
+                .Append(ML.Transforms.ApplyOnnxModel("softmaxout_1", "data_0", modelFile, gpuDeviceId: _gpuDeviceId, fallbackToCpu: _fallbackToCpu));
 
             TestEstimatorCore(pipe, data);
 
-            var result = pipe.Fit(data).Transform(data);
+            var model = pipe.Fit(data);
+            var result = model.Transform(data);
+
+            // save and reload the model
+            var tempPath = Path.GetTempFileName();
+            ML.Model.Save(model, data.Schema, tempPath);
+            var loadedModel = ML.Model.Load(tempPath, out DataViewSchema modelSchema);
+            (loadedModel as IDisposable)?.Dispose();
+
             var softmaxOutCol = result.Schema["softmaxout_1"];
 
             using (var cursor = result.GetRowCursor(softmaxOutCol))
@@ -237,6 +264,8 @@ namespace Microsoft.ML.Tests
                 }
                 Assert.Equal(4, numRows);
             }
+            (model as IDisposable)?.Dispose();
+            File.Delete(tempPath);
         }
 
         [OnnxFact]
@@ -268,7 +297,9 @@ namespace Microsoft.ML.Tests
                     }
                 });
 
-            var onnx = ML.Transforms.ApplyOnnxModel("softmaxout_1", "data_0", modelFile).Fit(dataView).Transform(dataView);
+            var pipeline = ML.Transforms.ApplyOnnxModel("softmaxout_1", "data_0", modelFile, gpuDeviceId: _gpuDeviceId, fallbackToCpu: _fallbackToCpu);
+            var onnxTransformer = pipeline.Fit(dataView);
+            var onnx = onnxTransformer.Transform(dataView);
             var scoreCol = onnx.Schema["softmaxout_1"];
 
             using (var curs = onnx.GetRowCursor(scoreCol))
@@ -281,6 +312,7 @@ namespace Microsoft.ML.Tests
                     Assert.Equal(1000, buffer.Length);
                 }
             }
+            (onnxTransformer as IDisposable)?.Dispose();
         }
 
         [OnnxFact]
@@ -298,7 +330,9 @@ namespace Microsoft.ML.Tests
                         inb = new float[] {1,2,3,4,5}
                     }
                 });
-            var onnx = ML.Transforms.ApplyOnnxModel(new[] { "outa", "outb" }, new[] { "ina", "inb" }, modelFile).Fit(dataView).Transform(dataView);
+            var pipeline = ML.Transforms.ApplyOnnxModel(new[] { "outa", "outb" }, new[] { "ina", "inb" }, modelFile, gpuDeviceId: _gpuDeviceId, fallbackToCpu: _fallbackToCpu);
+            var onnxTransformer = pipeline.Fit(dataView);
+            var onnx = onnxTransformer.Transform(dataView);
 
             var outaCol = onnx.Schema["outa"];
             var outbCol = onnx.Schema["outb"];
@@ -319,6 +353,67 @@ namespace Microsoft.ML.Tests
                     Assert.Equal(30, bufferb.GetValues().ToArray().Sum());
                 }
             }
+            (onnxTransformer as IDisposable)?.Dispose();
+        }
+
+        [OnnxFact]
+        public void OnnxModelOutputDifferentOrder()
+        {
+            var modelFile = Path.Combine(Directory.GetCurrentDirectory(), "twoinput", "twoinput.onnx");
+
+            var dataView = ML.Data.LoadFromEnumerable(
+                new TestDataMulti[] {
+                    new TestDataMulti()
+                    {
+                        ina = new float[] {1,2,3,4,5},
+                        inb = new float[] {1,2,3,4,5}
+                    }
+                });
+            // The model returns the output columns in the order outa, outb. We are doing the opposite here, making sure the name mapping is correct.
+            var pipeline = ML.Transforms.ApplyOnnxModel(new[] { "outb", "outa" }, new[] { "ina", "inb" }, modelFile, gpuDeviceId: _gpuDeviceId, fallbackToCpu: _fallbackToCpu);
+            var onnxTransformer = pipeline.Fit(dataView);
+            var onnx = onnxTransformer.Transform(dataView);
+
+            var outaCol = onnx.Schema["outa"];
+            var outbCol = onnx.Schema["outb"];
+            using (var curs = onnx.GetRowCursor(outaCol, onnx.Schema["outb"]))
+            {
+                var getScoresa = curs.GetGetter<VBuffer<float>>(outaCol);
+                var getScoresb = curs.GetGetter<VBuffer<float>>(outbCol);
+                var buffera = default(VBuffer<float>);
+                var bufferb = default(VBuffer<float>);
+
+                while (curs.MoveNext())
+                {
+                    getScoresa(ref buffera);
+                    getScoresb(ref bufferb);
+                    Assert.Equal(5, buffera.Length);
+                    Assert.Equal(5, bufferb.Length);
+                    Assert.Equal(0, buffera.GetValues().ToArray().Sum());
+                    Assert.Equal(30, bufferb.GetValues().ToArray().Sum());
+                }
+            }
+            (onnxTransformer as IDisposable)?.Dispose();
+
+            // The model returns the output columns in the order outa, outb. We are doing only a subset, outb, to make sure the mapping works.
+            pipeline = ML.Transforms.ApplyOnnxModel(new[] { "outb" }, new[] { "ina", "inb" }, modelFile, gpuDeviceId: _gpuDeviceId, fallbackToCpu: _fallbackToCpu);
+            onnxTransformer = pipeline.Fit(dataView);
+            onnx = onnxTransformer.Transform(dataView);
+
+            outbCol = onnx.Schema["outb"];
+            using (var curs = onnx.GetRowCursor(outbCol))
+            {
+                var getScoresb = curs.GetGetter<VBuffer<float>>(outbCol);
+                var bufferb = default(VBuffer<float>);
+
+                while (curs.MoveNext())
+                {
+                    getScoresb(ref bufferb);
+                    Assert.Equal(5, bufferb.Length);
+                    Assert.Equal(30, bufferb.GetValues().ToArray().Sum());
+                }
+            }
+            (onnxTransformer as IDisposable)?.Dispose();
         }
 
         [OnnxFact]
@@ -335,13 +430,40 @@ namespace Microsoft.ML.Tests
                     new TestDataUnknownDimensions(){input = new float[] {-1.1f, -1.3f, 1.2f }},
                 };
             var idv = mlContext.Data.LoadFromEnumerable(data);
-            var pipeline = ML.Transforms.ApplyOnnxModel(modelFile);
-            var transformedValues = pipeline.Fit(idv).Transform(idv);
+            var pipeline = ML.Transforms.ApplyOnnxModel(modelFile, gpuDeviceId: _gpuDeviceId, fallbackToCpu: _fallbackToCpu);
+            var onnxTransformer = pipeline.Fit(idv);
+            var transformedValues = onnxTransformer.Transform(idv);
             var predictions = mlContext.Data.CreateEnumerable<PredictionUnknownDimensions>(transformedValues, reuseRowObject: false).ToArray();
 
             Assert.Equal(1, predictions[0].argmax[0]);
             Assert.Equal(0, predictions[1].argmax[0]);
             Assert.Equal(2, predictions[2].argmax[0]);
+
+            (onnxTransformer as IDisposable)?.Dispose();
+        }
+
+        [OnnxFact]
+        public void TestOnnxNoneDimValue()
+        {
+            // Model contains None in input shape dimension
+            // Model input dims: [None, 4]
+            var modelFile = Path.Combine(@"unknowndimensions/linear_regression.onnx");
+            var mlContext = new MLContext(seed: 1);
+            var data = new TestDataNoneDimension[]
+            {
+                    new TestDataNoneDimension(){features = new float[] { 5.1f, 3.5f, 1.4f, 0.2f}},
+                    new TestDataNoneDimension(){features = new float[] { 7.0f, 3.2f, 4.7f, 1.4f }},
+                    new TestDataNoneDimension(){features = new float[] { 6.3f, 3.3f, 6.0f, 2.5f }},
+            };
+            var idv = mlContext.Data.LoadFromEnumerable(data);
+            var pipeline = ML.Transforms.ApplyOnnxModel(modelFile, gpuDeviceId: _gpuDeviceId, fallbackToCpu: _fallbackToCpu);
+            var onnxTransformer = pipeline.Fit(idv);
+            var transformedValues = onnxTransformer.Transform(idv);
+            var predictions = mlContext.Data.CreateEnumerable<PredictionNoneDimension>(transformedValues, reuseRowObject: false).ToArray();
+
+            Assert.Equal(-0.080, Math.Round(predictions[0].variable[0], 3));
+            Assert.Equal(1.204, Math.Round(predictions[1].variable[0], 3));
+            Assert.Equal(2.27, Math.Round(predictions[2].variable[0], 3));
         }
 
         /// <summary>
@@ -409,7 +531,7 @@ namespace Microsoft.ML.Tests
             // "softmaxout_1" are model input and output names stored in the used ONNX model file. Users may need to inspect their own models to
             // get the right input and output column names.
             var pipeline = ML.Transforms.ExtractPixels("data_0", "Image")                   // Map column "Image" to column "data_0"
-                .Append(ML.Transforms.ApplyOnnxModel("softmaxout_1", "data_0", modelFile)); // Map column "data_0" to column "softmaxout_1"
+                .Append(ML.Transforms.ApplyOnnxModel("softmaxout_1", "data_0", modelFile, gpuDeviceId: _gpuDeviceId, fallbackToCpu: _fallbackToCpu)); // Map column "data_0" to column "softmaxout_1"
             var model = pipeline.Fit(dataView);
             var onnx = model.Transform(dataView);
 
@@ -422,6 +544,8 @@ namespace Microsoft.ML.Tests
             foreach (var dataPoint in transformedDataPoints)
                 foreach (var score in dataPoint.Scores)
                     Assert.True(score > 0);
+
+            (model as IDisposable)?.Dispose();
         }
 
         private class ZipMapInput
@@ -457,7 +581,9 @@ namespace Microsoft.ML.Tests
             };
 
             var dataView = ML.Data.LoadFromEnumerable(dataPoints);
-            var transformedDataView = ML.Transforms.ApplyOnnxModel(new[] { "output" }, new[] { "input" }, modelFile).Fit(dataView).Transform(dataView);
+            var pipeline = ML.Transforms.ApplyOnnxModel(new[] { "output" }, new[] { "input" }, modelFile, gpuDeviceId: _gpuDeviceId, fallbackToCpu: _fallbackToCpu);
+            var onnxTransformer = pipeline.Fit(dataView);
+            var transformedDataView = onnxTransformer.Transform(dataView);
 
             // Verify output column carried by an IDataView.
             var outputColumn = transformedDataView.Schema["output"];
@@ -491,6 +617,7 @@ namespace Microsoft.ML.Tests
                 Assert.Equal(dataPoints[i].Input[1], dictionary[17]);
                 Assert.Equal(dataPoints[i].Input[2], dictionary[36]);
             }
+            (onnxTransformer as IDisposable)?.Dispose();
         }
 
         /// <summary>
@@ -507,7 +634,9 @@ namespace Microsoft.ML.Tests
             };
 
             var dataView = ML.Data.LoadFromEnumerable(dataPoints);
-            var transformedDataView = ML.Transforms.ApplyOnnxModel(new[] { "output" }, new[] { "input" }, modelFile).Fit(dataView).Transform(dataView);
+            var pipeline = ML.Transforms.ApplyOnnxModel(new[] { "output" }, new[] { "input" }, modelFile, gpuDeviceId: _gpuDeviceId, fallbackToCpu: _fallbackToCpu);
+            var onnxTransformer = pipeline.Fit(dataView);
+            var transformedDataView = onnxTransformer.Transform(dataView);
 
             // Verify output column carried by an IDataView.
             var outputColumn = transformedDataView.Schema["output"];
@@ -541,6 +670,7 @@ namespace Microsoft.ML.Tests
                 Assert.Equal(dataPoints[i].Input[1], dictionary["B"]);
                 Assert.Equal(dataPoints[i].Input[2], dictionary["C"]);
             }
+            (onnxTransformer as IDisposable)?.Dispose();
         }
 
         [OnnxFact]
@@ -660,23 +790,30 @@ namespace Microsoft.ML.Tests
 
             var dataView = ML.Data.LoadFromEnumerable(dataPoints);
 
+            var pipeline = new OnnxScoringEstimator[3];
+            var onnxTransformer = new OnnxTransformer[3];
             var transformedDataViews = new IDataView[3];
 
             // Test three public ONNX APIs with the custom shape.
 
             // Test 1.
-            transformedDataViews[0] = ML.Transforms.ApplyOnnxModel(
+            pipeline[0] = ML.Transforms.ApplyOnnxModel(
                 new[] { nameof(PredictionWithCustomShape.argmax) }, new[] { nameof(InputWithCustomShape.input) },
-                modelFile, shapeDictionary).Fit(dataView).Transform(dataView);
+                modelFile, shapeDictionary, gpuDeviceId: _gpuDeviceId, fallbackToCpu: _fallbackToCpu);
+            onnxTransformer[0] = pipeline[0].Fit(dataView);
+            transformedDataViews[0] = onnxTransformer[0].Transform(dataView);
 
             // Test 2.
-            transformedDataViews[1] = ML.Transforms.ApplyOnnxModel(
+            pipeline[1] = ML.Transforms.ApplyOnnxModel(
                 nameof(PredictionWithCustomShape.argmax), nameof(InputWithCustomShape.input),
-                modelFile, shapeDictionary).Fit(dataView).Transform(dataView);
+                modelFile, shapeDictionary, gpuDeviceId: _gpuDeviceId, fallbackToCpu: _fallbackToCpu);
+            onnxTransformer[1] = pipeline[1].Fit(dataView);
+            transformedDataViews[1] = onnxTransformer[1].Transform(dataView);
 
             // Test 3.
-            transformedDataViews[2] = ML.Transforms.ApplyOnnxModel(
-                modelFile, shapeDictionary).Fit(dataView).Transform(dataView);
+            pipeline[2] = ML.Transforms.ApplyOnnxModel(modelFile, shapeDictionary, gpuDeviceId: _gpuDeviceId, fallbackToCpu: _fallbackToCpu);
+            onnxTransformer[2] = pipeline[2].Fit(dataView);
+            transformedDataViews[2] = onnxTransformer[2].Transform(dataView);
 
             // Conduct the same check for all the 3 called public APIs.
             foreach(var transformedDataView in transformedDataViews)
@@ -699,6 +836,8 @@ namespace Microsoft.ML.Tests
                 for (int i = 0; i < transformedDataPoints.Count; ++i)
                     Assert.Equal(transformedDataPoints[i].argmax, expectedResults[i]);
             }
+            for (int i = 0; i < 3; i++)
+                (onnxTransformer[i] as IDisposable)?.Dispose();
         }
 
         /// <summary>
@@ -722,7 +861,7 @@ namespace Microsoft.ML.Tests
 
             // Define a ONNX transform, trains it, and apply it to the input data. 
             var pipeline = ML.Transforms.ApplyOnnxModel(new[] { "outa", "outb" }, new[] { "ina", "inb" },
-                modelFile, shapeDictionary);
+                modelFile, shapeDictionary, gpuDeviceId: _gpuDeviceId, fallbackToCpu: _fallbackToCpu);
         }
 
         /// <summary>
@@ -822,7 +961,7 @@ namespace Microsoft.ML.Tests
             var dataView = ML.Data.LoadFromEnumerable(dataPoints);
 
             var pipeline = ML.Transforms.ApplyOnnxModel(nameof(PredictionWithCustomShape.argmax),
-                nameof(InputWithCustomShape.input), modelFile, shapeDictionary);
+                nameof(InputWithCustomShape.input), modelFile, shapeDictionary, gpuDeviceId: _gpuDeviceId, fallbackToCpu: _fallbackToCpu);
 
             var model = pipeline.Fit(dataView);
 
@@ -860,6 +999,9 @@ namespace Microsoft.ML.Tests
 
             for (int i = 0; i < transformedDataPoints.Count; ++i)
                 Assert.Equal(transformedDataPoints[i].argmax, expectedResults[i]);
+
+            (model as IDisposable)?.Dispose();
+            (loadedModel as IDisposable)?.Dispose();
         }
     }
 }

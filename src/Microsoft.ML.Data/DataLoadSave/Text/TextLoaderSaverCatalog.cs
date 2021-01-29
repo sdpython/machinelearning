@@ -5,6 +5,7 @@
 using System.IO;
 using Microsoft.ML.Data;
 using Microsoft.ML.Data.IO;
+using Microsoft.ML.Internal.Utilities;
 using Microsoft.ML.Runtime;
 
 namespace Microsoft.ML
@@ -64,7 +65,7 @@ namespace Microsoft.ML
                 HasHeader = hasHeader,
                 AllowQuoting = allowQuoting,
                 TrimWhitespace = trimWhitespace,
-                AllowSparse = allowSparse
+                AllowSparse = allowSparse,
             };
 
             return new TextLoader(CatalogUtils.GetEnvironment(catalog), options: options, dataSample: dataSample);
@@ -120,11 +121,24 @@ namespace Microsoft.ML
                 allowSparse, trimWhitespace, dataSample: dataSample);
 
         /// <summary>
+        /// Create a text loader <see cref="TextLoader"/> by inferencing the dataset schema from a data model type.
+        /// </summary>
+        /// <param name="catalog">The <see cref="DataOperationsCatalog"/> catalog.</param>
+        /// <param name="options">Defines the settings of the load operation. Defines the settings of the load operation. No need to specify a Columns field,
+        /// as columns will be infered by this method.</param>
+        /// <param name="dataSample">The optional location of a data sample. The sample can be used to infer information
+        /// about the columns, such as slot names.</param>
+        public static TextLoader CreateTextLoader<TInput>(this DataOperationsCatalog catalog,
+            TextLoader.Options options,
+            IMultiStreamSource dataSample = null)
+            => TextLoader.CreateTextLoader<TInput>(CatalogUtils.GetEnvironment(catalog), options, dataSample);
+
+        /// <summary>
         /// Load a <see cref="IDataView"/> from a text file using <see cref="TextLoader"/>.
         /// Note that <see cref="IDataView"/>'s are lazy, so no actual loading happens here, just schema validation.
         /// </summary>
         /// <param name="catalog">The <see cref="DataOperationsCatalog"/> catalog.</param>
-        /// <param name="path">The path to the file.</param>
+        /// <param name="path">The path to the file(s).</param>
         /// <param name="columns">The columns of the schema.</param>
         /// <param name="separatorChar">The character used as separator between data points in a row. By default the tab character is used as separator.</param>
         /// <param name="hasHeader">Whether the file has a header. When <see langword="true"/>, the loader will skip the first line when
@@ -152,11 +166,7 @@ namespace Microsoft.ML
             bool trimWhitespace = TextLoader.Defaults.TrimWhitespace,
             bool allowSparse = TextLoader.Defaults.AllowSparse)
         {
-            Contracts.CheckNonEmpty(path, nameof(path));
-            if (!File.Exists(path))
-            {
-                throw Contracts.ExceptParam(nameof(path), "File does not exist at path: {0}", path);
-            }
+            CheckValidPathContents(path);
 
             var options = new TextLoader.Options
             {
@@ -177,7 +187,32 @@ namespace Microsoft.ML
         /// Note that <see cref="IDataView"/>'s are lazy, so no actual loading happens here, just schema validation.
         /// </summary>
         /// <param name="catalog">The <see cref="DataOperationsCatalog"/> catalog.</param>
-        /// <param name="path">The path to the file.</param>
+        /// <param name="path">Specifies a file or path of files from which to load.</param>
+        /// <param name="options">Defines the settings of the load operation.</param>
+        /// <example>
+        /// <format type="text/markdown">
+        /// <![CDATA[
+        /// [!code-csharp[LoadFromTextFile](~/../docs/samples/docs/samples/Microsoft.ML.Samples/Dynamic/DataOperations/SaveAndLoadFromText.cs)]
+        /// ]]>
+        /// </format>
+        /// </example>
+        public static IDataView LoadFromTextFile(this DataOperationsCatalog catalog, string path,
+            TextLoader.Options options = null)
+        {
+            CheckValidPathContents(path);
+
+            var env = catalog.GetEnvironment();
+            var source = new MultiFileSource(path);
+
+            return new TextLoader(env, options, dataSample: source).Load(source);
+        }
+
+        /// <summary>
+        /// Load a <see cref="IDataView"/> from a text file using <see cref="TextLoader"/>.
+        /// Note that <see cref="IDataView"/>'s are lazy, so no actual loading happens here, just schema validation.
+        /// </summary>
+        /// <param name="catalog">The <see cref="DataOperationsCatalog"/> catalog.</param>
+        /// <param name="path">The path to the file(s).</param>
         /// <param name="separatorChar">Column separator character. Default is '\t'</param>
         /// <param name="hasHeader">Whether the file has a header. When <see langword="true"/>, the loader will skip the first line when
         /// <see cref="TextLoader.Load(IMultiStreamSource)"/> is called.</param>
@@ -203,11 +238,7 @@ namespace Microsoft.ML
             bool trimWhitespace = TextLoader.Defaults.TrimWhitespace,
             bool allowSparse = TextLoader.Defaults.AllowSparse)
         {
-            Contracts.CheckNonEmpty(path, nameof(path));
-            if (!File.Exists(path))
-            {
-                throw Contracts.ExceptParam(nameof(path), "File does not exist at path: {0}", path);
-            }
+            CheckValidPathContents(path);
 
             // REVIEW: it is almost always a mistake to have a 'trainable' text loader here.
             // Therefore, we are going to disallow data sample.
@@ -220,28 +251,17 @@ namespace Microsoft.ML
         /// Note that <see cref="IDataView"/>'s are lazy, so no actual loading happens here, just schema validation.
         /// </summary>
         /// <param name="catalog">The <see cref="DataOperationsCatalog"/> catalog.</param>
-        /// <param name="path">Specifies a file from which to load.</param>
-        /// <param name="options">Defines the settings of the load operation.</param>
-        /// <example>
-        /// <format type="text/markdown">
-        /// <![CDATA[
-        /// [!code-csharp[LoadFromTextFile](~/../docs/samples/docs/samples/Microsoft.ML.Samples/Dynamic/DataOperations/SaveAndLoadFromText.cs)]
-        /// ]]>
-        /// </format>
-        /// </example>
-        public static IDataView LoadFromTextFile(this DataOperationsCatalog catalog, string path,
-            TextLoader.Options options = null)
+        /// <param name="path">Specifies a file or path of files from which to load.</param>
+        /// <param name="options">Defines the settings of the load operation. No need to specify a Columns field,
+        /// as columns will be infered by this method.</param>
+        /// <returns>The data view.</returns>
+        public static IDataView LoadFromTextFile<TInput>(this DataOperationsCatalog catalog, string path,
+            TextLoader.Options options)
         {
-            Contracts.CheckNonEmpty(path, nameof(path));
-            if (!File.Exists(path))
-            {
-                throw Contracts.ExceptParam(nameof(path), "File does not exist at path: {0}", path);
-            }
+            CheckValidPathContents(path);
 
-            var env = catalog.GetEnvironment();
-            var source = new MultiFileSource(path);
-
-            return new TextLoader(env, options, dataSample: source).Load(source);
+            return TextLoader.CreateTextLoader<TInput>(CatalogUtils.GetEnvironment(catalog), options)
+                .Load(new MultiFileSource(path));
         }
 
         /// <summary>
@@ -280,6 +300,18 @@ namespace Microsoft.ML
 
             using (var ch = env.Start("Saving data"))
                 DataSaverUtils.SaveDataView(ch, saver, data, stream, keepHidden);
+        }
+
+        /// <summary>
+        /// Checks the validity of a given path, and whether or not it is a
+        /// valid path to a data file, or a path to a directory of files.
+        /// </summary>
+        /// <param name="path">Specifies a file or path of files from which to load.</param>
+        private static void CheckValidPathContents(string path)
+        {
+            Contracts.CheckNonEmpty(path, nameof(path));
+            if (!File.Exists(path) && StreamUtils.ExpandWildCards(path).Length < 1)
+                throw Contracts.ExceptParam(nameof(path), "File or directory does not exist at path: {0}", path);
         }
     }
 }
